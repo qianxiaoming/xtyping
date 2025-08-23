@@ -1,0 +1,13 @@
+[package]
+name = "xtyping"
+version = "0.1.0"
+description = "超级打字是一个让玩家通过射击飞机来练习键盘打字的游戏"
+edition = "2024"
+authors = ["Kyle Qian <kyleqian@gmail.com>"]
+
+[[bin]]
+name = "xtyping"
+path = "src/xtyping.rs"
+
+[dependencies]
+bevy = { version = "0.16.1", features = ["bevy_dev_tools"] }

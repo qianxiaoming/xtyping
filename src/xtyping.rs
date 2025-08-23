@@ -4,6 +4,7 @@ mod menu;
 mod game;
 
 use bevy::{prelude::*, dev_tools::states::*};
+use bevy::app::ctrlc::Signal;
 use bevy::window::{WindowMode, WindowPlugin};
 use serde::Deserialize;
 
@@ -48,11 +49,8 @@ struct Player {
 #[derive(Deserialize, Resource, Default)]
 struct Players(Vec<Player>);
 
-fn setup_game(mut commands: Commands, mut players: ResMut<Players>, mut windows: Query<&mut Window>) {
-    if let Ok(mut window) = windows.single_mut() {
-        window.set_maximized(true);
-    }
-
+fn setup_game(mut commands: Commands, mut players: ResMut<Players>, mut window: Single<&mut Window>) {
+    window.set_maximized(true);
     commands.spawn(Camera2d);
 
     if std::path::Path::new(PLAYERS_DATA_FILE).exists() {

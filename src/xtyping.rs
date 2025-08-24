@@ -1,10 +1,9 @@
 #![doc = include_str!("../README.md")]
 
-mod menu;
+mod startup;
 mod game;
 
 use bevy::{prelude::*, dev_tools::states::*};
-use bevy::app::ctrlc::Signal;
 use bevy::window::{WindowMode, WindowPlugin};
 use serde::Deserialize;
 
@@ -16,21 +15,21 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: GAME_APP_TITLE.to_string(),
-                mode: WindowMode::Windowed,
+                //mode: WindowMode::BorderlessFullscreen(MonitorSelection::Primary),
                 ..default()
             }),
             ..default()
         }))
         .init_state::<GameState>()
         .add_systems(Startup, setup_game)
-        .add_plugins((menu::menu_plugin, game::game_plugin))
+        .add_plugins((startup::startup_plugin, game::game_plugin))
         .run();
 }
 
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
 enum GameState {
     #[default]
-    StartMenu,
+    Startup,
     NewPlayer,
     Countdown,
     TypeShooting,
@@ -49,8 +48,7 @@ struct Player {
 #[derive(Deserialize, Resource, Default)]
 struct Players(Vec<Player>);
 
-fn setup_game(mut commands: Commands, mut players: ResMut<Players>, mut window: Single<&mut Window>) {
-    window.set_maximized(true);
+fn setup_game(mut commands: Commands, mut players: ResMut<Players>) {
     commands.spawn(Camera2d);
 
     if std::path::Path::new(PLAYERS_DATA_FILE).exists() {

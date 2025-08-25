@@ -4,7 +4,7 @@ mod startup;
 mod game;
 
 use bevy::{prelude::*, dev_tools::states::*};
-use bevy::window::{WindowMode, WindowPlugin};
+use bevy::window::WindowPlugin;
 use serde::Deserialize;
 
 const GAME_APP_TITLE: &str = "超级打字练习";
@@ -15,13 +15,18 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: GAME_APP_TITLE.to_string(),
-                //mode: WindowMode::BorderlessFullscreen(MonitorSelection::Primary),
                 ..default()
             }),
             ..default()
         }))
         .init_state::<GameState>()
-        .add_systems(Startup, setup_game)
+        .insert_resource(GameFonts {
+            title_font: Handle::default(),
+            normal_font: Handle::default(),
+        })
+        .insert_resource(Players::default())
+        .add_systems(OnEnter(GameState::InitResources), init_resources)
+        .add_systems(Startup, setup_camera)
         .add_plugins((startup::startup_plugin, game::game_plugin))
         .run();
 }
@@ -29,12 +34,19 @@ fn main() {
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
 enum GameState {
     #[default]
+    InitResources,
     Startup,
     NewPlayer,
     Countdown,
     TypeShooting,
     GamePaused,
     ConfirmExit
+}
+
+#[derive(Resource)]
+struct GameFonts {
+    title_font: Handle<Font>,
+    normal_font: Handle<Font>,
 }
 
 #[derive(Deserialize, Default)]
@@ -48,8 +60,17 @@ struct Player {
 #[derive(Deserialize, Resource, Default)]
 struct Players(Vec<Player>);
 
-fn setup_game(mut commands: Commands, mut players: ResMut<Players>) {
+fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
+}
+
+/// 初始化全局的字体、用户以及图片资源
+fn init_resources(mut players: ResMut<Players>,
+                  mut fonts: ResMut<GameFonts>,
+                  asset_server: Res<AssetServer>,
+                  mut next: ResMut<NextState<GameState>>) {
+    fonts.title_font = asset_server.load("fonts/sharphei.ttf");
+    fonts.normal_font = asset_server.load("fonts/happyfont.ttf");
 
     if std::path::Path::new(PLAYERS_DATA_FILE).exists() {
         std::fs::read_to_string(PLAYERS_DATA_FILE)
@@ -59,4 +80,5 @@ fn setup_game(mut commands: Commands, mut players: ResMut<Players>) {
     } else {
         info!("No player data file found in current directory");
     }
+    next.set(GameState::Startup);
 }

@@ -2,9 +2,13 @@
 
 mod startup;
 mod game;
+mod widgets;
+mod ui;
 
 use bevy::{prelude::*, dev_tools::states::*};
-use bevy::window::WindowPlugin;
+use bevy::input_focus::InputFocus;
+use bevy::window::{WindowPlugin, WindowResolution};
+use bevy::winit::WinitSettings;
 use serde::Deserialize;
 
 const GAME_APP_TITLE: &str = "超级打字练习";
@@ -19,15 +23,13 @@ fn main() {
             }),
             ..default()
         }))
+        .init_resource::<InputFocus>()
         .init_state::<GameState>()
-        .insert_resource(GameFonts {
-            title_font: Handle::default(),
-            normal_font: Handle::default(),
-        })
-        .insert_resource(Players::default())
+        .init_resource::<GameFonts>()
+        .init_resource::<Players>()
         .add_systems(OnEnter(GameState::InitResources), init_resources)
         .add_systems(Startup, setup_camera)
-        .add_plugins((startup::startup_plugin, game::game_plugin))
+        .add_plugins((startup::startup_plugin, game::game_plugin, widgets::widgets_plugin))
         .run();
 }
 
@@ -37,16 +39,17 @@ enum GameState {
     InitResources,
     Startup,
     NewPlayer,
-    Countdown,
     TypeShooting,
     GamePaused,
     ConfirmExit
 }
 
-#[derive(Resource)]
+#[derive(Resource, Default)]
 struct GameFonts {
     title_font: Handle<Font>,
     normal_font: Handle<Font>,
+    info_font: Handle<Font>,
+    ui_font: Handle<Font>
 }
 
 #[derive(Deserialize, Default)]
@@ -71,6 +74,10 @@ fn init_resources(mut players: ResMut<Players>,
                   mut next: ResMut<NextState<GameState>>) {
     fonts.title_font = asset_server.load("fonts/sharphei.ttf");
     fonts.normal_font = asset_server.load("fonts/happyfont.ttf");
+    fonts.info_font = asset_server.load("fonts/sans.ttf");
+    fonts.ui_font = asset_server.load("fonts/cubehei.ttf");
+
+    widgets::UI_BUTTON_FONT.set(fonts.ui_font.clone()).ok();
 
     if std::path::Path::new(PLAYERS_DATA_FILE).exists() {
         std::fs::read_to_string(PLAYERS_DATA_FILE)

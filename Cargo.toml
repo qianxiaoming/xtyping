@@ -10,6 +10,9 @@ name = "xtyping"
 path = "src/xtyping.rs"
 
 [dependencies]
-bevy = { version = "0.16.1", features = ["bevy_dev_tools"] }
+bevy = { path="..", features = ["bevy_dev_tools"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde = { version = "1.0.219", features = ["derive"] }
+
+[lints]
+workspace = true

@@ -12,7 +12,7 @@ pub fn startup_plugin(app: &mut App) {
         .add_systems(Update, on_exit_game_button.run_if(in_state(GameState::Startup)));
 }
 
-#[derive(Component)]
+#[derive(Component, Default)]
 struct StartupEntity;
 
 #[derive(Component)]
@@ -22,18 +22,7 @@ struct ButtonCreateUser;
 struct ButtonExitGame;
 
 fn startup_setup(mut commands: Commands, players: Res<Players>, fonts: Res<GameFonts>, asset_server: Res<AssetServer>) {
-    commands.spawn((
-        Node {
-            width: Val::Percent(100.0),
-            height: Val::Auto,
-            flex_direction: FlexDirection::Column,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            ..default()
-        },
-        BackgroundColor(Color::NONE),
-        StartupEntity
-    ))
+    spawn_startup_root::<StartupEntity>(&mut commands)
         .with_children(|parent| {
             spawn_game_title(parent, &fonts);
             if players.0.len() == 0 {

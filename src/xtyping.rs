@@ -4,11 +4,11 @@ mod startup;
 mod game;
 mod widgets;
 mod ui;
+mod newplayer;
 
-use bevy::{prelude::*, dev_tools::states::*};
+use bevy::prelude::*;
 use bevy::input_focus::InputFocus;
-use bevy::window::{WindowPlugin, WindowResolution};
-use bevy::winit::WinitSettings;
+use bevy::window::WindowPlugin;
 use serde::Deserialize;
 
 const GAME_APP_TITLE: &str = "超级打字练习";
@@ -29,7 +29,12 @@ fn main() {
         .init_resource::<Players>()
         .add_systems(OnEnter(GameState::InitResources), init_resources)
         .add_systems(Startup, setup_camera)
-        .add_plugins((startup::startup_plugin, game::game_plugin, widgets::widgets_plugin))
+        .add_plugins((
+            startup::startup_plugin, 
+            game::game_plugin, 
+            newplayer::new_player_plugin,
+            widgets::widgets_plugin
+        ))
         .run();
 }
 

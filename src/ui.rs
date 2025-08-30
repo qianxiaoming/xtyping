@@ -16,6 +16,21 @@ pub const NORMAL_FONT_SIZE: f32 = 20.0;
 pub const INFO_FONT_SIZE: f32 = 18.0;
 pub const INFO_TEXT_COLOR: Color = Color::srgb_u8(188, 190, 196);
 
+pub fn spawn_startup_root<'a, T: Component + Default>(commands: &'a mut Commands) -> EntityCommands<'a> {
+    commands.spawn((
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Auto,
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            ..default()
+        },
+        BackgroundColor(Color::NONE),
+        T::default()
+    ))
+}
+
 pub fn spawn_game_title(builder: &mut ChildSpawnerCommands, fonts: &GameFonts) {
     let colors = vec![Color::srgb_u8(66, 133, 243),
                       Color::srgb_u8(234, 67, 53),
@@ -94,12 +109,12 @@ pub fn spawn_image_node(builder: &mut ChildSpawnerCommands,
     ));
 }
 
-pub fn spawn_info_text(parent: &mut ChildSpawnerCommands,
+pub fn spawn_info_text(builder: &mut ChildSpawnerCommands,
                    text: &str,
                    color: Color,
                    font: Handle<Font>,
                    font_size: f32) {
-    parent.spawn((
+    builder.spawn((
         Text::new(text),
         TextFont {
             font,
@@ -115,7 +130,7 @@ pub fn spawn_instructions(builder: &mut ChildSpawnerCommands, text: &str, fonts:
         Text::new(text),
         TextFont {
             font: fonts.normal_font.clone(),
-            font_size: ui::NORMAL_FONT_SIZE,
+            font_size: NORMAL_FONT_SIZE,
             ..default()
         },
         TextColor(Color::srgb_u8(96, 211, 255)),

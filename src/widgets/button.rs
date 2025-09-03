@@ -1,5 +1,6 @@
 use bevy::input_focus::InputFocus;
 use bevy::prelude::*;
+use crate::ui::TextConfig;
 use crate::widgets::{Selected, UI_FONT_SIZE};
 
 pub struct Button;
@@ -41,43 +42,9 @@ pub struct ButtonConfig {
     pub height: f32
 }
 
-#[derive(Clone)]
-pub struct ButtonText {
-    pub text: String,
-    pub font: Handle<Font>,
-    pub font_size: f32,
-    pub color: Color,
-    pub shadow: bool
-}
-
-impl Default for ButtonText {
-    fn default() -> Self {
-        ButtonText {
-            text: Default::default(),
-            font: Default::default(),
-            font_size: UI_FONT_SIZE,
-            color: Color::WHITE,
-            shadow: false
-        }
-    }
-}
-
-impl ButtonText {
-    pub fn to_shadow(&self) -> TextShadow {
-        if self.shadow {
-            TextShadow::default()
-        } else {
-            TextShadow {
-                offset: Vec2::splat(0.0),
-                color: Color::BLACK
-            }
-        }
-    }
-}
-
 impl Button {
     pub fn new<C: Component>(marker: C,
-                             text: ButtonText,
+                             text: TextConfig,
                              size: Vec2,
                              margin: UiRect,
                              config: ButtonConfig,
@@ -127,7 +94,7 @@ impl PushButton {
     pub fn new<C: Component>(marker: C, text: &str, size: Vec2, margin: UiRect) -> impl Bundle {
         Button::new(
             marker,
-            ButtonText {
+            TextConfig {
                 text: text.to_string(),
                 font: super::UI_BUTTON_FONT.get().unwrap().clone(),
                 ..default()

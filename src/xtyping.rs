@@ -75,8 +75,10 @@ fn setup_camera(mut commands: Commands) {
 /// 初始化全局的字体、用户以及图片资源
 fn init_resources(mut players: ResMut<Players>,
                   mut fonts: ResMut<GameFonts>,
+                  mut next: ResMut<NextState<GameState>>,
                   asset_server: Res<AssetServer>,
-                  mut next: ResMut<NextState<GameState>>) {
+                  window: Single<&mut Window>
+                  ) {
     fonts.title_font = asset_server.load("fonts/sharphei.ttf");
     fonts.normal_font = asset_server.load("fonts/happyfont.ttf");
     fonts.info_font = asset_server.load("fonts/sans.ttf");

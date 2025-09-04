@@ -1,6 +1,6 @@
 use bevy::input_focus::InputFocus;
 use bevy::prelude::*;
-use crate::ui::TextConfig;
+use super::TextConfig;
 use crate::widgets::{Selected, UI_FONT_SIZE};
 
 pub struct Button;

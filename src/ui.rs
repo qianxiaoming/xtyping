@@ -17,40 +17,6 @@ pub const NORMAL_FONT_SIZE: f32 = 20.0;
 pub const INFO_FONT_SIZE: f32 = 18.0;
 pub const INFO_TEXT_COLOR: Color = Color::srgb_u8(188, 190, 196);
 
-#[derive(Clone)]
-pub struct TextConfig {
-    pub text: String,
-    pub font: Handle<Font>,
-    pub font_size: f32,
-    pub color: Color,
-    pub shadow: bool
-}
-
-impl Default for TextConfig {
-    fn default() -> Self {
-        TextConfig {
-            text: Default::default(),
-            font: Default::default(),
-            font_size: UI_FONT_SIZE,
-            color: Color::WHITE,
-            shadow: false
-        }
-    }
-}
-
-impl TextConfig {
-    pub fn to_shadow(&self) -> TextShadow {
-        if self.shadow {
-            TextShadow::default()
-        } else {
-            TextShadow {
-                offset: Vec2::splat(0.0),
-                color: Color::BLACK
-            }
-        }
-    }
-}
-
 pub fn spawn_startup_root<'a, T: Component + Default>(commands: &'a mut Commands) -> EntityCommands<'a> {
     commands.spawn((
         Node {

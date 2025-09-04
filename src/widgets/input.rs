@@ -1,5 +1,7 @@
+use std::mem;
+use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::prelude::*;
-use crate::ui::TextConfig;
+use super::TextConfig;
 
 #[derive(Resource)]
 pub struct InputFocused(Entity);
@@ -121,7 +123,7 @@ fn is_cursor_in_border(cursor_pos: Vec2,
         cursor_pos.y <= translation.y + half_size.y
 }
 
-pub fn handle_input_box_focus(
+pub fn input_box_handle_focus(
     mut commands: Commands,
     mouse_button_input: Res<ButtonInput<MouseButton>>,
     query_parent: Query<&ChildOf>,
@@ -171,7 +173,7 @@ pub fn handle_input_box_focus(
     }
 }
 
-pub fn blink_input_box_cursor(
+pub fn input_box_blink_cursor(
     focused: Res<InputFocused>,
     input_query: Query<&InputBox, With<InputBox>>,
     mut cursor_query: Query<(Entity, &mut Visibility, &mut CursorMarker)>,
@@ -193,22 +195,24 @@ pub fn blink_input_box_cursor(
     }
 }
 
-pub fn listen_ime_events(
+pub fn input_box_ime_events(
     mut events: EventReader<Ime>,
-    focused: Res<InputFocused>,
     mut texts: Query<(Entity, &mut Text, &TextFont, &mut InputBox), With<InputBox>>,
+    focused: Res<InputFocused>,
     cursors: Query<&UiGlobalTransform, With<CursorMarker>>,
     parents: Query<&ChildOf>,
     input_borders: Query<(&UiGlobalTransform, &InputBoxBorder), With<InputBoxBorder>>,
-    window: Single<&Window>
+    window: Single<&Window>,
 ) {
-    let (entity, mut text, font, mut input_box) = texts.get_mut(focused.0).unwrap();
+    let (entity, mut text, font, mut input_box) =
+        texts.get_mut(focused.0).unwrap();
     // 分别获取输入文本框和光标的位置信息
     let (border_translation, border_size) = get_border_position(entity, parents, input_borders);
     let cursor_translation = cursors.get(input_box.cursor).unwrap().translation;
     // 根据光标位置判断是否还可以接受更多字符
     let accept_more =
-        cursor_translation.x + font.font_size < border_translation.x + border_size.x * window.scale_factor() / 2.0;
+        cursor_translation.x + font.font_size
+            < border_translation.x + border_size.x * window.scale_factor() / 2.0;
     for event in events.read() {
         match event {
             Ime::Preedit { value, cursor, .. } if !cursor.is_none() => {
@@ -225,4 +229,51 @@ pub fn listen_ime_events(
             _ => (),
         }
     }
+}
+
+pub fn input_box_keyboard_events(
+    mut events: EventReader<KeyboardInput>,
+    mut texts: Query<(Entity, &mut Text, &TextFont, &mut InputBox), With<InputBox>>,
+    focused: Res<InputFocused>,
+    cursors: Query<&UiGlobalTransform, With<CursorMarker>>,
+    parents: Query<&ChildOf>,
+    input_borders: Query<(&UiGlobalTransform, &InputBoxBorder), With<InputBoxBorder>>,
+    window: Single<&Window>
+) {
+    let (entity, mut text, font, mut input_box) =
+        texts.get_mut(focused.0).unwrap();
+    // 分别获取输入文本框和光标的位置信息
+    let (border_translation, border_size) = get_border_position(entity, parents, input_borders);
+    let cursor_translation = cursors.get(input_box.cursor).unwrap().translation;
+    // 根据光标位置判断是否还可以接受更多字符
+    let accept_more =
+        cursor_translation.x + font.font_size
+            < border_translation.x + border_size.x * window.scale_factor() / 2.0;
+    for event in events.read() {
+        if !event.state.is_pressed() {
+            continue;
+        }
+
+        match (&event.logical_key, &event.text) {
+            (Key::Backspace, _) => {
+                text.pop();
+                input_box.value.pop();
+            }
+            (_, Some(inserted_text)) => {
+                if accept_more && inserted_text.chars().all(is_printable_char) {
+                    text.push_str(inserted_text);
+                    input_box.value.push_str(inserted_text);
+                }
+            }
+            _ => continue,
+        }
+    }
+}
+
+fn is_printable_char(chr: char) -> bool {
+    let is_in_private_use_area = ('\u{e000}'..='\u{f8ff}').contains(&chr)
+        || ('\u{f0000}'..='\u{ffffd}').contains(&chr)
+        || ('\u{100000}'..='\u{10fffd}').contains(&chr);
+
+    !is_in_private_use_area && !chr.is_ascii_control()
 }

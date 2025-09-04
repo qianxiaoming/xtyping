@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use super::*;
 use ui::*;
+use widgets::TextConfig;
 
 const PLAYER_AVATARS: [&str; 28] = [
     "whale", "cat", "cool", "donatello", "dragon", "swordsman", "robot",
@@ -35,7 +36,7 @@ struct PlayerNameText;
 #[derive(Resource, Default)]
 struct SelectedAvatar(Option<Entity>, Option<String>);
 
-fn new_player_setup(mut commands: Commands, players: Res<Players>, fonts: Res<GameFonts>, asset_server: Res<AssetServer>) {
+fn new_player_setup(mut commands: Commands, fonts: Res<GameFonts>, asset_server: Res<AssetServer>) {
     commands.insert_resource(SelectedAvatar::default());
     spawn_startup_root::<NewPlayerEntity>(&mut commands)
         .with_children(|parent| {
@@ -168,18 +169,3 @@ fn on_cancel_button(
         }
     }
 }
-
-// fn toggle_ime(
-//     mut input_focus: ResMut<InputFocus>,
-//     input: Res<ButtonInput<MouseButton>>,
-//     mut window: Single<&mut Window>,
-//     player_name: Single<Entity, With<PlayerNameText>>,
-//     mut ui_writer: TextUiWriter,
-// ) {
-//     if input.just_pressed(MouseButton::Left) {
-//         window.ime_position = window.cursor_position().unwrap();
-//         window.ime_enabled = !window.ime_enabled;
-//
-//         *ui_writer.text(*status_text, 3) = format!("{}\n", window.ime_enabled);
-//     }
-// }

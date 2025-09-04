@@ -22,5 +22,5 @@ pub fn widgets_plugin(app: &mut App) {
                               button_style_selected_system,
                               button_style_unselected_system,
                               handle_input_box_focus.run_if(|q: Query<(), With<InputBox>>| !q.is_empty()),
-                              blink_input_box_cursor.run_if(resource_exists::<InputFocused>)));
+                              (blink_input_box_cursor, listen_ime_events).run_if(resource_exists::<InputFocused>)));
 }

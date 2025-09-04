@@ -1,16 +1,17 @@
-use bevy::input_focus::InputFocus;
 use bevy::prelude::*;
-use bevy::render::view::visibility;
 use crate::ui::TextConfig;
 
 #[derive(Resource)]
 pub struct InputFocused(Entity);
 
 #[derive(Component)]
+pub struct InputBoxBorder(Vec2);
+
+#[derive(Component)]
 pub struct InputBox {
     text_color: Color,
     hint_text: String,
-    size: Vec2,
+    value: String,
     cursor: Entity
 }
 
@@ -27,11 +28,11 @@ pub struct CursorMarker {
 
 impl InputBox {
     pub fn spawn<C: Component>(builder: &mut ChildSpawnerCommands,
-                             marker: C,
-                             text: TextConfig,
-                             hint: &str,
-                             size: Vec2,
-                             margin: UiRect) {
+                               marker: C,
+                               text: TextConfig,
+                               hint: &str,
+                               size: Vec2,
+                               margin: UiRect) {
         let use_hint = text.text.is_empty();
         builder.spawn((
             // 构建底边蓝色，其它边白色的文本输入框外观
@@ -50,6 +51,7 @@ impl InputBox {
                 },
                 ..default()
             },
+            InputBoxBorder(size),
             BorderRadius::px(5.0, 5.0, 5.0, 5.0),
             BorderColor {
                 top: INPUT_BOX_SIDE_COLOR,
@@ -89,7 +91,7 @@ impl InputBox {
                 builder.commands_mut().entity(input_text).insert(InputBox {
                     text_color: text.color,
                     hint_text: hint.to_owned(),
-                    size: Vec2::new(size.x, size.y),
+                    value: "".to_owned(),
                     cursor
                 });
             });
@@ -97,44 +99,62 @@ impl InputBox {
     }
 }
 
-fn cursor_inside_node(cursor_pos: Vec2, transform: &UiGlobalTransform, size: Vec2) -> bool {
-    let node_pos = transform.translation;
-    let half_size = size / 2.0;
+fn get_border_position(entity: Entity,
+                       query_parent: Query<&ChildOf>,
+                       input_border_query: Query<(&UiGlobalTransform, &InputBoxBorder), With<InputBoxBorder>>) -> (Vec2, Vec2) {
+    let border_entity = query_parent.get(entity).ok().and_then(|p| query_parent.get(p.0).ok()).map(|p| p.0);
+    let (transform, border) = input_border_query.get(border_entity.unwrap()).unwrap();
+    (transform.translation, border.0)
+}
 
-    cursor_pos.x >= node_pos.x - half_size.x &&
-        cursor_pos.x <= node_pos.x + half_size.x &&
-        cursor_pos.y >= node_pos.y - half_size.y &&
-        cursor_pos.y <= node_pos.y + half_size.y
+fn is_cursor_in_border(cursor_pos: Vec2,
+                       factor: f32,
+                       entity: Entity,
+                       query_parent: Query<&ChildOf>,
+                       input_border_query: Query<(&UiGlobalTransform, &InputBoxBorder), With<InputBoxBorder>>) -> bool {
+    let (translation, border_size) = get_border_position(entity, query_parent, input_border_query);
+    let half_size = border_size / 2.0;
+    let translation = translation / factor;
+    cursor_pos.x >= translation.x - half_size.x &&
+        cursor_pos.x <= translation.x + half_size.x &&
+        cursor_pos.y >= translation.y - half_size.y &&
+        cursor_pos.y <= translation.y + half_size.y
 }
 
 pub fn handle_input_box_focus(
     mut commands: Commands,
     mouse_button_input: Res<ButtonInput<MouseButton>>,
-    mut query_input_box: Query<
+    query_parent: Query<&ChildOf>,
+    input_border_query: Query<(&UiGlobalTransform, &InputBoxBorder), With<InputBoxBorder>>,
+    mut input_box_query: Query<
         (
             Entity,
             &mut Text,
             &mut TextColor,
-            &InputBox,
-            &UiGlobalTransform
+            &InputBox
         ),
         With<InputBox>
     >,
     mut cursor_query: Query<&mut Visibility, With<CursorMarker>>,
     input_focused: Option<Res<InputFocused>>,
-    windows: Query<&Window>,
+    mut window: Single<&mut Window>,
 ) {
     if mouse_button_input.just_pressed(MouseButton::Left) {
-        let window = windows.single().unwrap();
         let cursor_pos = window.cursor_position().unwrap_or_default();
-        for (entity, mut text, mut color,  input_box,
-            transform) in &mut query_input_box {
-            if cursor_inside_node(cursor_pos * window.scale_factor(), transform, input_box.size) {
-                *text = Text::new("");
-                *color = TextColor(input_box.text_color);
-                let mut visibility = cursor_query.get_mut(input_box.cursor).unwrap();
-                *visibility = Visibility::Visible;
-                commands.insert_resource(InputFocused(entity));
+        for (entity, mut text, mut color,  input_box) in &mut input_box_query {
+            if is_cursor_in_border(cursor_pos, window.scale_factor(), entity, query_parent, input_border_query) {
+                // 如果本身就在输入状态则什么也不做
+                if input_focused.is_none() || input_focused.as_ref().unwrap().0 != entity {
+                    *text = Text::new(input_box.value.clone());
+                    *color = TextColor(input_box.text_color);
+                    let mut visibility = cursor_query.get_mut(input_box.cursor).unwrap();
+                    *visibility = Visibility::Visible;
+                    commands.insert_resource(InputFocused(entity));
+
+                    // toggle IME
+                    window.ime_position = window.cursor_position().unwrap();
+                    window.ime_enabled = true;
+                }
             } else {
                 if text.0.is_empty() {
                     *text = Text::new(input_box.hint_text.clone());
@@ -144,6 +164,7 @@ pub fn handle_input_box_focus(
                 *visibility = Visibility::Hidden;
                 if let Some(ref e) = input_focused && e.0 == entity {
                     commands.remove_resource::<InputFocused>();
+                    window.ime_enabled = false;
                 }
             }
         }
@@ -172,30 +193,36 @@ pub fn blink_input_box_cursor(
     }
 }
 
-// 系统：键盘输入写入到当前焦点的输入框
-// fn text_input_system(
-//     mut char_events: EventReader<ReceivedCharacter>,
-//     keys: Res<ButtonInput<KeyCode>>,
-//     input_focus: Res<InputFocus>,
-//     children_q: Query<&Children, With<InputBox>>,
-//     mut text_q: Query<&mut Text, With<InputText>>,
-// ) {
-//     if let Some(focused) = input_focus.focused() {
-//         if let Ok(children) = children_q.get(focused) {
-//             for &child in children.iter() {
-//                 if let Ok(mut text) = text_q.get_mut(child) {
-//                     // 输入字符
-//                     for ev in char_events.read() {
-//                         if !ev.char.is_control() {
-//                             text.0.push(ev.char);
-//                         }
-//                     }
-//                     // 退格删除
-//                     if keys.just_pressed(KeyCode::Backspace) {
-//                         text.0.pop();
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
+pub fn listen_ime_events(
+    mut events: EventReader<Ime>,
+    focused: Res<InputFocused>,
+    mut texts: Query<(Entity, &mut Text, &TextFont, &mut InputBox), With<InputBox>>,
+    cursors: Query<&UiGlobalTransform, With<CursorMarker>>,
+    parents: Query<&ChildOf>,
+    input_borders: Query<(&UiGlobalTransform, &InputBoxBorder), With<InputBoxBorder>>,
+    window: Single<&Window>
+) {
+    let (entity, mut text, font, mut input_box) = texts.get_mut(focused.0).unwrap();
+    // 分别获取输入文本框和光标的位置信息
+    let (border_translation, border_size) = get_border_position(entity, parents, input_borders);
+    let cursor_translation = cursors.get(input_box.cursor).unwrap().translation;
+    // 根据光标位置判断是否还可以接受更多字符
+    let accept_more =
+        cursor_translation.x + font.font_size < border_translation.x + border_size.x * window.scale_factor() / 2.0;
+    for event in events.read() {
+        match event {
+            Ime::Preedit { value, cursor, .. } if !cursor.is_none() => {
+                if accept_more {
+                    *text = Text::new(format!("{}{value}", input_box.value));
+                }
+            }
+            Ime::Commit { value, .. } => {
+                if accept_more {
+                    input_box.value += value;
+                    *text = Text::new(input_box.value.clone());
+                }
+            }
+            _ => (),
+        }
+    }
+}

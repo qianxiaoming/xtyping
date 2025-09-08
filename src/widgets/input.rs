@@ -11,10 +11,10 @@ pub struct InputBoxBorder(Vec2);
 
 #[derive(Component)]
 pub struct InputBox {
-    text_color: Color,
-    hint_text: String,
-    value: String,
-    cursor: Entity
+    pub text_color: Color,
+    pub hint_text: String,
+    pub value: String,
+    pub cursor: Entity
 }
 
 const INPUT_BOX_SIDE_COLOR: Color = Color::srgb_u8(240, 240, 240);
@@ -29,7 +29,7 @@ pub struct CursorMarker {
 }
 
 impl InputBox {
-    pub fn spawn<C: Component>(builder: &mut ChildSpawnerCommands,
+    pub fn new<C: Component>(builder: &mut ChildSpawnerCommands,
                                marker: C,
                                text: TextConfig,
                                hint: &str,
@@ -200,8 +200,8 @@ pub fn input_box_ime_events(
     mut texts: Query<(Entity, &mut Text, &TextFont, &mut InputBox), With<InputBox>>,
     focused: Res<InputFocused>,
     cursors: Query<&UiGlobalTransform, With<CursorMarker>>,
-    parents: Query<&ChildOf>,
     input_borders: Query<(&UiGlobalTransform, &InputBoxBorder), With<InputBoxBorder>>,
+    parents: Query<&ChildOf>,
     window: Single<&Window>,
 ) {
     let (entity, mut text, font, mut input_box) =
@@ -236,8 +236,8 @@ pub fn input_box_keyboard_events(
     mut texts: Query<(Entity, &mut Text, &TextFont, &mut InputBox), With<InputBox>>,
     focused: Res<InputFocused>,
     cursors: Query<&UiGlobalTransform, With<CursorMarker>>,
-    parents: Query<&ChildOf>,
     input_borders: Query<(&UiGlobalTransform, &InputBoxBorder), With<InputBoxBorder>>,
+    parents: Query<&ChildOf>,
     window: Single<&Window>
 ) {
     let (entity, mut text, font, mut input_box) =

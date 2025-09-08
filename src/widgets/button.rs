@@ -220,7 +220,6 @@ pub fn button_interaction_system(
                     node.width = Val::Px(config.width + 2.0);
                     node.height = Val::Px(config.height + 2.0);
                 }
-                button.set_changed();
             }
             Interaction::None => {
                 input_focus.clear();

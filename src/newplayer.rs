@@ -1,7 +1,10 @@
+use std::fs::File;
+use std::io::Write;
 use bevy::prelude::*;
 use super::*;
 use ui::*;
 use widgets::TextConfig;
+use crate::widgets::InputBox;
 
 const PLAYER_AVATARS: [&str; 28] = [
     "whale", "cat", "cool", "donatello", "dragon", "swordsman", "robot",
@@ -42,7 +45,7 @@ fn new_player_setup(mut commands: Commands, fonts: Res<GameFonts>, asset_server:
         .with_children(|parent| {
             spawn_game_title(parent, &fonts);
             spawn_instructions(parent, "1. 输入一个喜欢的名称作为账户名", &fonts, 100.0);
-            widgets::InputBox::spawn(
+            InputBox::new(
                 parent,
                 PlayerNameText,
                 TextConfig {
@@ -143,17 +146,30 @@ fn on_avatar_button(
 }
 
 fn on_create_button(
-    selected: ResMut<SelectedAvatar>,
+    selected: Res<SelectedAvatar>,
+    mut players: ResMut<Players>,
     mut next_state: ResMut<NextState<GameState>>,
     mut reader: EventReader<widgets::ButtonClicked>,
     query: Query<(), With<ButtonCreate>>,
+    player_name: Single<&InputBox, With<PlayerNameText>>
 ) {
     for event in reader.read() {
         if query.get(event.entity).is_ok() {
-            if let Some(ref avatar) = selected.1 {
-                info!("selected avatar: {}", avatar);
+            if !player_name.value.is_empty() && let Some(ref avatar) = selected.1 {
+                players.0.push(Player {
+                    name: player_name.value.clone(),
+                    avatar: avatar.clone(),
+                    score: 0,
+                    level: 1
+                });
+                let json = serde_json::to_string_pretty(&players.0).unwrap();
+                if let Ok(mut file) = File::create(PLAYERS_DATA_FILE) {
+                    if let Err(e) = file.write_all(json.as_bytes()) {
+                        eprintln!("Couldn't write to file: {}", e);
+                    }
+                }
+                next_state.set(GameState::Startup);
             }
-            next_state.set(GameState::Startup);
         }
     }
 }

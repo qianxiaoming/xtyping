@@ -9,7 +9,7 @@ mod newplayer;
 use bevy::prelude::*;
 use bevy::input_focus::InputFocus;
 use bevy::window::WindowPlugin;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 const GAME_APP_TITLE: &str = "超级打字练习";
 const PLAYERS_DATA_FILE: &str = "players.dat";
@@ -57,7 +57,7 @@ struct GameFonts {
     ui_font: Handle<Font>
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Serialize, Default)]
 struct Player {
     name: String,
     avatar: String,

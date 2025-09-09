@@ -1,12 +1,8 @@
 use std::cmp::PartialEq;
 use bevy::color::Color;
-use bevy::input::gestures::{DoubleTapGesture, PinchGesture, RotationGesture};
-use bevy::input::mouse::{MouseButtonInput, MouseMotion, MouseWheel};
 use bevy::input_focus::InputFocus;
 use bevy::math::Vec2;
 use bevy::prelude::*;
-use bevy::ui::ContentSize;
-use bevy::ui::widget::ImageNodeSize;
 use crate::widgets::TextConfig;
 
 const ENTRY_HOVERED_COLOR: Color = Color::srgb_u8(161, 67, 246);
@@ -176,6 +172,7 @@ impl ListView {
 
 #[derive(BufferedEvent)]
 pub struct ListViewSelectionChanged {
+    pub entity: Entity,
     pub value: String,
 }
 
@@ -208,6 +205,12 @@ pub fn listview_interaction_system(
         match *interaction {
             Interaction::Pressed => {
                 input_focus.set(entity);
+                if let Some(selected) = listview.hovered {
+                    writer.write(ListViewSelectionChanged{
+                        entity,
+                        value: listview.entries[selected].value.clone(),
+                    });
+                };
             },
             Interaction::Hovered => {
                 input_focus.set(entity);

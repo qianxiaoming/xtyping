@@ -44,7 +44,7 @@ enum GameState {
     InitResources,
     Startup,
     NewPlayer,
-    TypeShooting,
+    Playing,
     GamePaused,
     ConfirmExit
 }

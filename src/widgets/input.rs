@@ -1,4 +1,3 @@
-use std::mem;
 use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::prelude::*;
 use super::TextConfig;

@@ -100,6 +100,7 @@ fn new_player_setup(mut commands: Commands, fonts: Res<GameFonts>, asset_server:
                     widgets::PushButton::new(ButtonCreate,
                                              "创建",
                                              Vec2::new(100.0,40.0),
+                                             true,
                                              UiRect {
                                                  top: Val::Px(30.0),
                                                  right: Val::Px(5.0),
@@ -110,6 +111,7 @@ fn new_player_setup(mut commands: Commands, fonts: Res<GameFonts>, asset_server:
                     widgets::PushButton::new(ButtonCancel,
                                              "取消",
                                              Vec2::new(100.0,40.0),
+                                             true,
                                              UiRect {
                                                  top: Val::Px(30.0),
                                                  left: Val::Px(5.0),

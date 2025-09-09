@@ -5,12 +5,15 @@ use ui::*;
 use widgets;
 use crate::widgets::{ListItem, ListView, TextConfig};
 
+const MAX_PLAYERS_COUNT: usize = 7;
+
 pub fn startup_plugin(app: &mut App) {
     app
         .add_systems(OnEnter(GameState::Startup), startup_setup)
         .add_systems(OnExit(GameState::Startup), cleanup_entities::<StartupEntity>)
         .add_systems(Update, on_create_user_button.run_if(in_state(GameState::Startup)))
-        .add_systems(Update, on_exit_game_button.run_if(in_state(GameState::Startup)));
+        .add_systems(Update, on_exit_game_button.run_if(in_state(GameState::Startup)))
+        .add_systems(Update, on_player_selected.run_if(in_state(GameState::Startup)));
 }
 
 #[derive(Component, Default)]
@@ -45,6 +48,7 @@ fn default_screen_setup(builder: &mut ChildSpawnerCommands, fonts: Res<GameFonts
         widgets::PushButton::new(ButtonCreateUser,
                                  "创建新的账号",
                                  Vec2::new(500.0,50.0),
+                                 true,
                                  UiRect::top(Val::Px(30.0))
         ));
     // 退出游戏按钮
@@ -52,6 +56,7 @@ fn default_screen_setup(builder: &mut ChildSpawnerCommands, fonts: Res<GameFonts
         widgets::PushButton::new(ButtonExitGame,
                                  "退出游戏",
                                  Vec2::new(500.0,50.0),
+                                 true,
                                  UiRect::top(Val::Px(20.0))
         ));
     // 快速入门说明
@@ -242,16 +247,19 @@ fn player_list_setup(builder: &mut ChildSpawnerCommands, players: Res<Players>, 
             BackgroundColor(Color::srgb_u8(76, 69, 113)),
         ));
     });
+    info!("total players: {}", players.0.len());
     builder.spawn(
         widgets::PushButton::new(ButtonCreateUser,
                                  "创建新的账号",
                                  Vec2::new(500.0,50.0),
+                                 players.0.len() < MAX_PLAYERS_COUNT,
                                  UiRect::top(Val::Px(20.0))
         ));
     builder.spawn(
         widgets::PushButton::new(ButtonExitGame,
                                  "退出游戏",
                                  Vec2::new(500.0,50.0),
+                                 true,
                                  UiRect::top(Val::Px(20.0))
         ));
 }
@@ -275,10 +283,9 @@ fn on_create_user_button(
     mut reader: EventReader<widgets::ButtonClicked>,
     query: Query<(), With<ButtonCreateUser>>,
 ) {
-    for event in reader.read() {
-        if query.get(event.entity).is_ok() {
-            next_state.set(GameState::NewPlayer)
-        }
+    if let Some(event) = reader.read().last()
+        && query.get(event.entity).is_ok() {
+        next_state.set(GameState::NewPlayer);
     }
 }
 
@@ -287,9 +294,20 @@ fn on_exit_game_button(
     mut exit: EventWriter<AppExit>,
     query: Query<(), With<ButtonExitGame>>,
 ) {
-    for event in reader.read() {
-        if query.get(event.entity).is_ok() {
-            exit.write(AppExit::Success);
-        }
+    if let Some(event) = reader.read().last()
+        && query.get(event.entity).is_ok()  {
+        exit.write(AppExit::Success);
+    }
+}
+
+fn on_player_selected(
+    mut next_state: ResMut<NextState<GameState>>,
+    mut reader: EventReader<widgets::ListViewSelectionChanged>,
+    query: Query<(), With<ListViewPlayer>>,
+) {
+    if let Some(event) = reader.read().last()
+        && query.get(event.entity).is_ok() {
+        info!("Player {} selected to continue game", event.value);
+        next_state.set(GameState::Playing)
     }
 }

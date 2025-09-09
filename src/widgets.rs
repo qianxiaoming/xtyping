@@ -50,6 +50,15 @@ impl TextConfig {
 #[derive(Default, Component)]
 pub struct Selected;
 
+#[derive(Component)]
+pub struct Enabled(bool);
+
+impl Default for Enabled {
+    fn default() -> Self {
+        Enabled(true)
+    }
+}
+
 pub fn widgets_plugin(app: &mut App) {
     app
         .add_event::<ButtonClicked>()

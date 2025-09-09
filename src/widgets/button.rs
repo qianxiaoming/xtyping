@@ -1,6 +1,6 @@
 use bevy::input_focus::InputFocus;
 use bevy::prelude::*;
-use super::TextConfig;
+use super::{Enabled, TextConfig};
 use crate::widgets::{Selected, UI_FONT_SIZE};
 
 pub struct Button;
@@ -14,6 +14,10 @@ const BUTTON_BORDER_WIDTH: f32 = 1.0;
 const BUTTON_NORMAL_COLOR: Color = Color::srgb_u8(147, 51, 234);
 const BUTTON_HOVERED_COLOR: Color = Color::srgb_u8(161, 67, 246);
 const BUTTON_PRESSED_COLOR: Color = Color::srgb_u8(133, 35, 222);
+
+const BUTTON_DISABLED_COLOR: Color = Color::srgb_u8(80, 21, 133);
+
+const BUTTON_DISABLED_TEXT: Color = Color::srgb_u8(100, 100, 100);
 
 #[derive(Clone, Copy)]
 pub enum CornerStyle {
@@ -46,6 +50,7 @@ impl Button {
     pub fn new<C: Component>(marker: C,
                              text: TextConfig,
                              size: Vec2,
+                             enabled: bool,
                              margin: UiRect,
                              config: ButtonConfig,
                              corner: CornerStyle) -> impl Bundle {
@@ -71,8 +76,9 @@ impl Button {
                 },
                 BorderColor::all(config.border),
                 corner.to_border_radius(),
-                BackgroundColor(config.normal),
+                BackgroundColor(if enabled { config.normal } else { BUTTON_DISABLED_COLOR }),
                 config,
+                Enabled(enabled),
                 children![(
                     Text::new(text.text.clone()),
                     TextFont {
@@ -80,7 +86,7 @@ impl Button {
                         font_size: text.font_size,
                         ..default()
                     },
-                    TextColor(text.color),
+                    TextColor(if enabled { text.color } else { BUTTON_DISABLED_TEXT }),
                     text.to_shadow(),
                 )]
             )],
@@ -91,7 +97,7 @@ impl Button {
 pub struct PushButton;
 
 impl PushButton {
-    pub fn new<C: Component>(marker: C, text: &str, size: Vec2, margin: UiRect) -> impl Bundle {
+    pub fn new<C: Component>(marker: C, text: &str, size: Vec2, enabled: bool, margin: UiRect) -> impl Bundle {
         Button::new(
             marker,
             TextConfig {
@@ -100,6 +106,7 @@ impl PushButton {
                 ..default()
             },
             size,
+            enabled,
             margin,
             ButtonConfig {
                 normal: BUTTON_NORMAL_COLOR,
@@ -153,6 +160,7 @@ impl IconButton {
                     width: size.x,
                     height: size.y
                 },
+                Enabled(true),
                 ButtonValue(value),
                 children![(
                     ImageNode::new(image),
@@ -178,20 +186,23 @@ pub fn button_interaction_system(
             &mut BorderColor,
             &mut bevy::prelude::Button,
             &ButtonConfig,
+            &Enabled,
             Option<&Selected>,
             &Children,
         ),
         Changed<Interaction>,
     >,
-    //mut text_query: Query<&mut Text>,
     mut font_query: Query<&mut TextFont>,
     mut icon_query: Query<(&mut Node), With<ImageNode>>,
     mut writer: EventWriter<ButtonClicked>,
 ) {
     for (entity, interaction, mut color, mut border_color,
-        mut button, config, selected, children) in &mut interaction_query
+        mut button, config, enabled, selected, children)
+    in &mut interaction_query
     {
-        //let mut text = text_query.get_mut(children[0]).unwrap();
+        if !enabled.0 {
+            continue;
+        }
         let font = font_query.get_mut(children[0]);
         let icon = icon_query.get_mut(children[0]);
         match *interaction {
@@ -226,7 +237,7 @@ pub fn button_interaction_system(
                 if selected.is_some() {
                     *color = config.pressed.into();
                 } else {
-                    *color = config.normal.into();
+                    *color = if enabled.0 { config.normal.into() } else { BUTTON_DISABLED_COLOR.into() };
                 }
                 *border_color = BorderColor::all(config.normal);
                 if font.is_ok() {

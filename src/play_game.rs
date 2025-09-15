@@ -202,7 +202,7 @@ fn play_game_setup(mut commands: Commands,
     });
 }
 
-fn play_game_exit(mut commands: Commands, query: Query<Entity, With<PlayGameEntity>>) {
+fn play_game_exit(commands: Commands, query: Query<Entity, With<PlayGameEntity>>) {
     cleanup_entities::<PlayGameEntity>(commands, query);
 }
 

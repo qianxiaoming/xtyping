@@ -130,8 +130,8 @@ fn new_player_exit(mut commands: Commands, query: Query<Entity, With<NewPlayerEn
 fn on_avatar_button(
     mut commands: Commands,
     mut selected: ResMut<SelectedAvatar>,
-    mut reader: EventReader<widgets::ButtonClicked>,
-    query: Query<(&widgets::ButtonValue), With<ButtonAvatar>>,
+    mut reader: MessageReader<widgets::ButtonClicked>,
+    query: Query<&widgets::ButtonValue, With<ButtonAvatar>>,
 ) {
     for event in reader.read() {
         if let Ok(value) = query.get(event.entity) {
@@ -151,7 +151,7 @@ fn on_create_button(
     selected: Res<SelectedAvatar>,
     mut players: ResMut<Players>,
     mut next_state: ResMut<NextState<GameState>>,
-    mut reader: EventReader<widgets::ButtonClicked>,
+    mut reader: MessageReader<widgets::ButtonClicked>,
     query: Query<(), With<ButtonCreate>>,
     player_name: Single<&InputBox, With<PlayerNameText>>
 ) {
@@ -178,7 +178,7 @@ fn on_create_button(
 
 fn on_cancel_button(
     mut next_state: ResMut<NextState<GameState>>,
-    mut reader: EventReader<widgets::ButtonClicked>,
+    mut reader: MessageReader<widgets::ButtonClicked>,
     query: Query<(), With<ButtonCancel>>,
 ) {
     for event in reader.read() {

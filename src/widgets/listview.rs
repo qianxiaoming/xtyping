@@ -34,7 +34,6 @@ pub struct ListEntry {
 #[derive(Component, Default)]
 pub struct ListViewMarker {
     pub entries: Vec<ListEntry>,
-    pub selected: Option<usize>,
     pub hovered: Option<usize>,
     pub text_config: TextConfig,
 }
@@ -81,7 +80,6 @@ impl ListView {
             Button,
             ListViewMarker {
                 entries: Vec::new(),
-                selected: None,
                 hovered: None,
                 text_config: text.clone(),
             },
@@ -152,9 +150,7 @@ impl ListView {
                             ListItemMarker(ListItemType::Indicator),
                         )).id()
                     },
-                    ListItem::Command(_) => {
-                        !unreachable!()
-                    },
+                    ListItem::Command(_) => { unimplemented!() },
                 };
                 entry.entities.push(item_id);
             };
@@ -170,7 +166,7 @@ impl ListView {
     }
 }
 
-#[derive(BufferedEvent)]
+#[derive(Message)]
 pub struct ListViewSelectionChanged {
     pub entity: Entity,
     pub value: String,
@@ -195,11 +191,10 @@ pub fn listview_interaction_system(
             Option<&mut TextColor>,
         ),
         With<ListItemMarker>>,
-    mut writer: EventWriter<ListViewSelectionChanged>,
-    window: Single<&Window>
+    mut writer: MessageWriter<ListViewSelectionChanged>
 ) {
     for (entity, interaction,
-        mut listview, transform, children)
+        mut listview, _, _)
         in &mut interaction_query
     {
         match *interaction {
@@ -237,7 +232,7 @@ pub fn listview_interaction_system(
 
 pub fn listview_cursor_move_system(
     input_focus: Res<InputFocus>,
-    mut cursor_moved_events: EventReader<CursorMoved>,
+    mut cursor_moved_events: MessageReader<CursorMoved>,
     mut listview_query: Query<&mut ListViewMarker>,
     mut item_query: Query<
         (

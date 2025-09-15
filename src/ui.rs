@@ -1,7 +1,6 @@
 use bevy::color::Color;
 use bevy::prelude::*;
-use crate::{ui, GameFonts, GAME_APP_TITLE};
-use crate::widgets::UI_FONT_SIZE;
+use crate::{GameFonts, GAME_APP_TITLE};
 
 pub fn cleanup_entities<T: Component>(
     mut commands: Commands,

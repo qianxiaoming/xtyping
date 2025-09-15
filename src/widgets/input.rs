@@ -195,7 +195,7 @@ pub fn input_box_blink_cursor(
 }
 
 pub fn input_box_ime_events(
-    mut events: EventReader<Ime>,
+    mut events: MessageReader<Ime>,
     mut texts: Query<(Entity, &mut Text, &TextFont, &mut InputBox), With<InputBox>>,
     focused: Res<InputFocused>,
     cursors: Query<&UiGlobalTransform, With<CursorMarker>>,
@@ -231,7 +231,7 @@ pub fn input_box_ime_events(
 }
 
 pub fn input_box_keyboard_events(
-    mut events: EventReader<KeyboardInput>,
+    mut events: MessageReader<KeyboardInput>,
     mut texts: Query<(Entity, &mut Text, &TextFont, &mut InputBox), With<InputBox>>,
     focused: Res<InputFocused>,
     cursors: Query<&UiGlobalTransform, With<CursorMarker>>,

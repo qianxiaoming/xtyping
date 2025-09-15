@@ -87,8 +87,7 @@ fn setup_camera(mut commands: Commands) {
 fn init_resources(mut players: ResMut<Players>,
                   mut fonts: ResMut<GameFonts>,
                   mut next: ResMut<NextState<GameState>>,
-                  asset_server: Res<AssetServer>,
-                  window: Single<&mut Window>
+                  asset_server: Res<AssetServer>
                   ) {
     fonts.title_font = asset_server.load("fonts/sharphei.ttf");
     fonts.normal_font = asset_server.load("fonts/happyfont.ttf");

@@ -280,7 +280,7 @@ fn spawn_item_desc_node<'a>(builder: &'a mut ChildSpawnerCommands) -> EntityComm
 
 fn on_create_user_button(
     mut next_state: ResMut<NextState<GameState>>,
-    mut reader: EventReader<widgets::ButtonClicked>,
+    mut reader: MessageReader<widgets::ButtonClicked>,
     query: Query<(), With<ButtonCreateUser>>,
 ) {
     if let Some(event) = reader.read().last()
@@ -290,8 +290,8 @@ fn on_create_user_button(
 }
 
 fn on_exit_game_button(
-    mut reader: EventReader<widgets::ButtonClicked>,
-    mut exit: EventWriter<AppExit>,
+    mut reader: MessageReader<widgets::ButtonClicked>,
+    mut exit: MessageWriter<AppExit>,
     query: Query<(), With<ButtonExitGame>>,
 ) {
     if let Some(event) = reader.read().last()
@@ -303,7 +303,7 @@ fn on_exit_game_button(
 fn on_player_selected(
     mut commands: Commands,
     mut next_state: ResMut<NextState<GameState>>,
-    mut reader: EventReader<widgets::ListViewSelectionChanged>,
+    mut reader: MessageReader<widgets::ListViewSelectionChanged>,
     query: Query<(), With<ListViewPlayer>>,
 ) {
     if let Some(event) = reader.read().last()

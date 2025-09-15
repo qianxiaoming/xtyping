@@ -61,8 +61,8 @@ impl Default for Enabled {
 
 pub fn widgets_plugin(app: &mut App) {
     app
-        .add_event::<ButtonClicked>()
-        .add_event::<ListViewSelectionChanged>()
+        .add_message::<ButtonClicked>()
+        .add_message::<ListViewSelectionChanged>()
         .add_systems(Update, (button_interaction_system,
                               button_style_selected_system,
                               button_style_unselected_system))
@@ -73,5 +73,5 @@ pub fn widgets_plugin(app: &mut App) {
                                   .run_if(resource_exists::<InputFocused>)))
         .add_systems(Update, (listview_interaction_system.run_if(|q: Query<(), With<ListViewMarker>>| !q.is_empty()),
                               listview_cursor_move_system.run_if((|q: Query<(), With<ListViewMarker>>| !q.is_empty())
-                                  .and(on_event::<CursorMoved>))));
+                                  .and(on_message::<CursorMoved>))));
 }

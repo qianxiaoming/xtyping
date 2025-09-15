@@ -5,7 +5,7 @@ use crate::widgets::{Selected, UI_FONT_SIZE};
 
 pub struct Button;
 
-#[derive(BufferedEvent)]
+#[derive(Message)]
 pub struct ButtonClicked {
     pub entity: Entity,
 }
@@ -193,8 +193,8 @@ pub fn button_interaction_system(
         Changed<Interaction>,
     >,
     mut font_query: Query<&mut TextFont>,
-    mut icon_query: Query<(&mut Node), With<ImageNode>>,
-    mut writer: EventWriter<ButtonClicked>,
+    mut icon_query: Query<&mut Node, With<ImageNode>>,
+    mut writer: MessageWriter<ButtonClicked>,
 ) {
     for (entity, interaction, mut color, mut border_color,
         mut button, config, enabled, selected, children)
@@ -256,7 +256,7 @@ pub fn button_style_selected_system(
     mut query: Query<(Entity, &mut BackgroundColor, &ButtonConfig, Option<&Selected>),
         (With<bevy::prelude::Button>, Changed<Selected>)>
 ) {
-    for (entity, mut color, config, selected) in &mut query {
+    for (_, mut color, config, selected) in &mut query {
         if selected.is_some() {
             *color = config.pressed.into();
         }

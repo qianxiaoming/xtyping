@@ -43,7 +43,7 @@ fn new_player_setup(mut commands: Commands, fonts: Res<GameFonts>, asset_server:
     commands.insert_resource(SelectedAvatar::default());
     spawn_startup_root::<NewPlayerEntity>(&mut commands)
         .with_children(|parent| {
-            spawn_game_title(parent, &fonts);
+            spawn_game_title(parent, &fonts, 1., 20., 15., 20., true);
             spawn_instructions(parent, "1. 输入一个喜欢的名称作为账户名", &fonts, 100.0);
             InputBox::new(
                 parent,

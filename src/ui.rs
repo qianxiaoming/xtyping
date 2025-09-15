@@ -32,7 +32,13 @@ pub fn spawn_startup_root<'a, T: Component + Default>(commands: &'a mut Commands
     ))
 }
 
-pub fn spawn_game_title(builder: &mut ChildSpawnerCommands, fonts: &GameFonts) {
+pub fn spawn_game_title(builder: &mut ChildSpawnerCommands,
+                        fonts: &GameFonts,
+                        scale: f32,
+                        margin: f32,
+                        padding: f32,
+                        spacing: f32, 
+                        signature: bool) {
     let colors = vec![Color::srgb_u8(66, 133, 243),
                       Color::srgb_u8(234, 67, 53),
                       Color::srgb_u8(251, 188, 8),
@@ -42,10 +48,10 @@ pub fn spawn_game_title(builder: &mut ChildSpawnerCommands, fonts: &GameFonts) {
     builder.spawn((
         Node {
             width: Val::Percent(100.0),
-            height: Val::Px(TITLE_FONT_SIZE + 30.0),
+            height: Val::Px(TITLE_FONT_SIZE*scale + padding*2.),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::FlexStart,
-            padding: UiRect::top(Val::Px(20.0)),
+            margin: UiRect::top(Val::Px(margin)),
             ..default()
         },
         BackgroundColor(Color::NONE),
@@ -65,40 +71,42 @@ pub fn spawn_game_title(builder: &mut ChildSpawnerCommands, fonts: &GameFonts) {
                             Text::new(ch.to_string()),
                             TextFont {
                                 font: fonts.title_font.clone(),
-                                font_size: TITLE_FONT_SIZE,
+                                font_size: TITLE_FONT_SIZE*scale,
                                 ..default()
                             },
                             TextColor(color),
                             Node {
-                                margin: UiRect::right(Val::Px(20.0)),
+                                margin: UiRect::right(Val::Px(spacing)),
                                 ..default()
                             }
                         ));
                     }
                 });
         });
-    builder.spawn((
-        Text::new("v0.1  kyleqian@gmail.com"),
-        TextFont {
-            font: fonts.info_font.clone(),
-            font_size: INFO_FONT_SIZE,
-            ..default()
-        },
-        TextColor(INFO_TEXT_COLOR),
-    ));
+    if signature {
+        builder.spawn((
+            Text::new("v0.1  kyleqian@gmail.com"),
+            TextFont {
+                font: fonts.info_font.clone(),
+                font_size: INFO_FONT_SIZE,
+                ..default()
+            },
+            TextColor(INFO_TEXT_COLOR),
+        ));
+    }
 }
 
 pub fn spawn_image_node(builder: &mut ChildSpawnerCommands,
                     asset_server: &AssetServer,
-                    path: &'static str,
-                    size: f32,
+                    path: &str,
+                    size: Vec2,
                     h_margin: f32,
                     v_margin: f32) {
     builder.spawn((
-        ImageNode::new(asset_server.load(path)),
+        ImageNode::new(asset_server.load(path.to_string())),
         Node {
-            width: Val::Px(size),
-            height: Val::Px(size),
+            width: Val::Px(size.x),
+            height: Val::Px(size.y),
             margin: UiRect {
                 left: Val::Px(h_margin),
                 right: Val::Px(h_margin),

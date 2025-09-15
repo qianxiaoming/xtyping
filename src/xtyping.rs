@@ -1,10 +1,10 @@
 #![doc = include_str!("../README.md")]
 
 mod startup;
-mod game;
 mod widgets;
 mod ui;
-mod newplayer;
+mod new_player;
+mod play_game;
 
 use bevy::prelude::*;
 use bevy::input_focus::InputFocus;
@@ -30,9 +30,9 @@ fn main() {
         .add_systems(OnEnter(GameState::InitResources), init_resources)
         .add_systems(Startup, setup_camera)
         .add_plugins((
-            startup::startup_plugin, 
-            game::game_plugin, 
-            newplayer::new_player_plugin,
+            startup::startup_plugin,
+            new_player::new_player_plugin,
+            play_game::play_game_plugin,
             widgets::widgets_plugin
         ))
         .run();
@@ -44,7 +44,7 @@ enum GameState {
     InitResources,
     Startup,
     NewPlayer,
-    Playing,
+    PlayGame,
     GamePaused,
     ConfirmExit
 }
@@ -67,6 +67,17 @@ struct Player {
 
 #[derive(Deserialize, Resource, Default)]
 struct Players(Vec<Player>);
+
+impl Players {
+    pub fn get(&self, name: &str) -> &Player {
+        self.0.iter().find(|p| p.name == name).unwrap()
+    }
+}
+
+#[derive(Resource, Default)]
+struct GameData {
+    pub player: String,
+}
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2d);

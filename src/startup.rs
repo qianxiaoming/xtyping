@@ -31,7 +31,7 @@ struct ButtonExitGame;
 fn startup_setup(mut commands: Commands, players: Res<Players>, fonts: Res<GameFonts>, asset_server: Res<AssetServer>) {
     spawn_startup_root::<StartupEntity>(&mut commands)
         .with_children(|builder| {
-            spawn_game_title(builder, &fonts);
+            spawn_game_title(builder, &fonts, 1., 20., 15., 20., true);
             if players.0.is_empty() {
                 default_screen_setup(builder, fonts, asset_server);
             } else {
@@ -127,7 +127,7 @@ fn default_screen_setup(builder: &mut ChildSpawnerCommands, fonts: Res<GameFonts
                     ..default()
                 }
             ).with_children(|builder| {
-                spawn_image_node(builder, &asset_server, "images/plane_3_yellow.png", 60.0, 10.0, 5.0);
+                spawn_image_node(builder, &asset_server, "images/plane_3_yellow.png", Vec2::splat(60.), 10.0, 5.0);
                 spawn_item_desc_node(builder)
                     .with_children(|builder| {
                         spawn_info_text(builder, "敌机", Color::srgb_u8(251, 188, 8),
@@ -136,7 +136,7 @@ fn default_screen_setup(builder: &mut ChildSpawnerCommands, fonts: Res<GameFonts
                                         INFO_TEXT_COLOR, fonts.normal_font.clone(), INFO_FONT_SIZE-2.0);
                     });
 
-                spawn_image_node(builder, &asset_server, "images/bomb.png", 45.0, 10.0, 10.0);
+                spawn_image_node(builder, &asset_server, "images/bomb.png", Vec2::splat(45.), 10.0, 10.0);
                 spawn_item_desc_node(builder)
                     .with_children(|builder| {
                         spawn_info_text(builder, "炸弹", Color::srgb_u8(234, 67, 53),
@@ -145,7 +145,7 @@ fn default_screen_setup(builder: &mut ChildSpawnerCommands, fonts: Res<GameFonts
                                         INFO_TEXT_COLOR, fonts.normal_font.clone(), INFO_FONT_SIZE-2.0);
                     });
 
-                spawn_image_node(builder, &asset_server, "images/first-aid-kit.png", 45.0, 10.0, 10.0);
+                spawn_image_node(builder, &asset_server, "images/first-aid-kit.png", Vec2::splat(45.), 10.0, 10.0);
                 spawn_item_desc_node(builder)
                     .with_children(|builder| {
                         spawn_info_text(builder, "急救包", Color::srgb_u8(52, 168, 82),
@@ -154,7 +154,7 @@ fn default_screen_setup(builder: &mut ChildSpawnerCommands, fonts: Res<GameFonts
                                         INFO_TEXT_COLOR, fonts.normal_font.clone(), INFO_FONT_SIZE-2.0);
                     });
 
-                spawn_image_node(builder, &asset_server, "images/shield.png", 45.0, 10.0, 10.0);
+                spawn_image_node(builder, &asset_server, "images/shield.png", Vec2::splat(45.), 10.0, 10.0);
                 spawn_item_desc_node(builder)
                     .with_children(|builder| {
                         spawn_info_text(builder, "护盾", Color::srgb_u8(66, 133, 243),
@@ -301,6 +301,7 @@ fn on_exit_game_button(
 }
 
 fn on_player_selected(
+    mut commands: Commands,
     mut next_state: ResMut<NextState<GameState>>,
     mut reader: EventReader<widgets::ListViewSelectionChanged>,
     query: Query<(), With<ListViewPlayer>>,
@@ -308,6 +309,10 @@ fn on_player_selected(
     if let Some(event) = reader.read().last()
         && query.get(event.entity).is_ok() {
         info!("Player {} selected to continue game", event.value);
-        next_state.set(GameState::Playing)
+        commands.insert_resource(GameData {
+            player: event.value.clone(),
+            ..default()
+        });
+        next_state.set(GameState::PlayGame)
     }
 }

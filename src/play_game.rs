@@ -1,10 +1,13 @@
 mod marker;
 mod logic;
 
+use rand::Rng;
+use rand::rng;
 use bevy::app::App;
 use bevy::math::VectorSpace;
 use bevy::prelude::*;
-use crate::{GameData, GameFonts, GameState, Players};
+use bevy::window::WindowResized;
+use crate::{GameData, GameFonts, GameState, PlayState, Players};
 use crate::ui::*;
 use marker::*;
 
@@ -18,9 +21,14 @@ struct PlayGameEntity;
 
 pub fn play_game_plugin(app: &mut App) {
     app
-        .add_systems(OnEnter(GameState::PlayGame), play_game_setup)
-        .add_systems(OnExit(GameState::PlayGame), play_game_exit)
-        .add_systems(Update, logic::update_game_time);
+        .add_systems(OnEnter(GameState::PlayGame(PlayState::Splash)), play_game_setup)
+        .add_systems(OnExit(GameState::PlayGame(PlayState::Confirm)), play_game_exit)
+        .add_systems(Update, logic::update_game_time)
+        .add_systems(Update, on_window_resized.run_if(on_message::<WindowResized>
+            .and(in_state(GameState::PlayGame(PlayState::Splash))
+            .or(in_state(GameState::PlayGame(PlayState::Playing))))))
+        .add_systems(Update, move_space_stars.run_if(in_state(GameState::PlayGame(PlayState::Splash))
+            .or(in_state(GameState::PlayGame(PlayState::Playing)))));
 }
 
 fn play_game_setup(mut commands: Commands,
@@ -28,7 +36,8 @@ fn play_game_setup(mut commands: Commands,
                    game_data: Res<GameData>,
                    fonts: Res<GameFonts>,
                    asset_server: Res<AssetServer>,
-                   time: Res<Time>) {
+                   time: Res<Time>,
+                   window: Single<&Window>) {
     commands.spawn((
         Node {
             width: Val::Percent(100.),
@@ -200,6 +209,8 @@ fn play_game_setup(mut commands: Commands,
             spawn_health_bar(builder, HealthBar(Character::Enemy), 100, 4);
         });
     });
+
+    spawn_space_stars(commands, asset_server, window);
 }
 
 fn play_game_exit(commands: Commands, query: Query<Entity, With<PlayGameEntity>>) {
@@ -269,4 +280,72 @@ pub fn gradient_health_bar_color(value: u16) -> Color {
     };
 
     Color::LinearRgba(c)
+}
+
+#[derive(Component)]
+struct SpaceStar {
+    speed: f32,
+}
+
+fn spawn_space_stars(mut commands: Commands, asset_server: Res<AssetServer>, window: Single<&Window>) {
+    let mut rng = rand::rng();
+    let texture = asset_server.load("images/space_star.png");
+
+    let layers = vec![
+        (30, 15.0_f32..25.0_f32, 0.10_f32..0.20_f32, -1.0_f32),  // 远（慢）
+        (35, 30.0_f32..45.0_f32, 0.15_f32..0.25_f32, -2.0_f32), // 中
+        (40, 50.0_f32..75.0_f32, 0.20_f32..0.35_f32, -3.0_f32),// 近（快）
+    ];
+
+    let half_w = window.width() / 2.0;
+    let half_h = window.height() / 2.0;
+    for (count, speed_range, scale_range, z) in layers {
+        for _ in 0..count {
+            let x = rng.random_range(-half_w..half_w);
+            let y = rng.random_range(-half_h..half_h);
+            let speed = rng.random_range(speed_range.clone());
+            let scale = rng.random_range(scale_range.clone());
+
+            commands.spawn((
+                Sprite {
+                    image: texture.clone(),
+                    image_mode: SpriteImageMode::Auto,
+                    ..default()
+                },
+                Transform::from_translation(Vec3::new(x, y, z)).with_scale(Vec3::splat(scale)),
+                SpaceStar { speed },
+            ));
+        }
+    }
+}
+
+fn on_window_resized(
+    mut resize_events: MessageReader<WindowResized>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    stars: Query<Entity, With<SpaceStar>>,
+    window: Single<&Window>
+) {
+    if let Some(e) = resize_events.read().last() {
+        for entity in &stars {
+            commands.entity(entity).despawn();
+        }
+        spawn_space_stars(commands, asset_server, window);
+    }
+}
+
+fn move_space_stars(
+    time: Res<Time>,
+    mut query: Query<(&mut Transform, &SpaceStar)>,
+    window: Single<&Window>,
+) {
+    let left_bound = -window.width() / 2.0;
+    let right_bound = window.width() / 2.0;
+
+    for (mut transform, star) in &mut query {
+        transform.translation.x -= star.speed * time.delta_secs();
+        if transform.translation.x < left_bound {
+            transform.translation.x = right_bound;
+        }
+    }
 }

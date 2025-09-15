@@ -38,15 +38,22 @@ fn main() {
         .run();
 }
 
+/// 玩游戏过程中的可能状态
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, States)]
+enum PlayState {
+    Splash,
+    Playing,
+    Paused,
+    Confirm
+}
+
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
 enum GameState {
     #[default]
     InitResources,
     Startup,
     NewPlayer,
-    PlayGame,
-    GamePaused,
-    ConfirmExit
+    PlayGame(PlayState)
 }
 
 #[derive(Resource, Default)]

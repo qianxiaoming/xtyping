@@ -313,6 +313,6 @@ fn on_player_selected(
             player: event.value.clone(),
             ..default()
         });
-        next_state.set(GameState::PlayGame)
+        next_state.set(GameState::PlayGame(PlayState::Splash))
     }
 }

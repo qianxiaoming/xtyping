@@ -118,6 +118,31 @@ pub fn spawn_image_node(builder: &mut ChildSpawnerCommands,
     ));
 }
 
+pub fn spawn_marked_image<Marker: Component>(
+    builder: &mut ChildSpawnerCommands,
+    marker: Marker,
+    asset_server: &AssetServer,
+    path: &str,
+    size: Vec2,
+    h_margin: f32,
+    v_margin: f32) {
+    builder.spawn((
+        ImageNode::new(asset_server.load(path.to_string())),
+        marker,
+        Node {
+            width: Val::Px(size.x),
+            height: Val::Px(size.y),
+            margin: UiRect {
+                left: Val::Px(h_margin),
+                right: Val::Px(h_margin),
+                top: Val::Px(v_margin),
+                bottom: Val::Px(v_margin),
+            },
+            ..default()
+        },
+    ));
+}
+
 pub fn spawn_info_text(builder: &mut ChildSpawnerCommands,
                    text: &str,
                    color: Color,
@@ -131,6 +156,25 @@ pub fn spawn_info_text(builder: &mut ChildSpawnerCommands,
             ..default()
         },
         TextColor(color)
+    ));
+}
+
+pub fn spawn_marked_text<Marker: Component>(
+    builder: &mut ChildSpawnerCommands,
+    marker: Marker,
+    text: &str,
+    color: Color,
+    font: Handle<Font>,
+    font_size: f32) {
+    builder.spawn((
+        Text::new(text),
+        TextFont {
+            font,
+            font_size,
+            ..default()
+        },
+        TextColor(color),
+        marker
     ));
 }
 

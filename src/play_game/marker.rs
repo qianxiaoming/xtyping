@@ -1,0 +1,43 @@
+use bevy::prelude::Component;
+use crate::play_game::Character;
+
+/// 游戏时间显示
+#[derive(Component)]
+pub struct GameTime {
+    pub start_time: f64,
+    pub last_second: u64,
+}
+
+/// 玩家等级提升进度条
+#[derive(Component)]
+pub struct LevelProgress;
+
+/// 玩家等级星星图片
+#[derive(Component)]
+pub struct LevelStarImage;
+
+/// 玩家当前得分文本
+#[derive(Component)]
+pub struct PlayerScore;
+
+/// 玩家/敌方的血条
+#[derive(Component)]
+pub struct HealthBar(pub Character);
+
+pub const HEALTH_BAR_LEN: u16 = 100;
+
+/// 敌方数量统计文本
+#[derive(Component)]
+pub struct EnemyCounter;
+
+/// 炸弹数量统计文本
+#[derive(Component)]
+pub struct BombCounter;
+
+/// 血包数量统计文本
+#[derive(Component)]
+pub struct BloodBagCounter;
+
+/// 护盾数量统计文本
+#[derive(Component)]
+pub struct ShieldCounter;

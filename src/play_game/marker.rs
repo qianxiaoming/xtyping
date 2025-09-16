@@ -1,4 +1,4 @@
-use bevy::prelude::Component;
+use bevy::prelude::{Component, Timer};
 use crate::play_game::Character;
 
 /// 游戏时间显示
@@ -41,3 +41,12 @@ pub struct BloodBagCounter;
 /// 护盾数量统计文本
 #[derive(Component)]
 pub struct ShieldCounter;
+
+/// Splash动画元素
+#[derive(Component)]
+pub struct GameSplashEntity;
+
+#[derive(Component)]
+pub struct SplashTextRow {
+    pub timer: Timer,
+}

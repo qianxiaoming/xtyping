@@ -310,6 +310,7 @@ fn spawn_space_stars(mut commands: Commands, asset_server: Res<AssetServer>, win
                 Sprite {
                     image: texture.clone(),
                     image_mode: SpriteImageMode::Auto,
+                    color: Color::WHITE,
                     ..default()
                 },
                 Transform::from_translation(Vec3::new(x, y, z)).with_scale(Vec3::splat(scale)),

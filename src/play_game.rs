@@ -27,7 +27,7 @@ pub fn play_game_plugin(app: &mut App) {
         .add_systems(Update, on_window_resized.run_if(on_message::<WindowResized>
             .and(in_state(GameState::PlayGame(PlayState::Splash))
             .or(in_state(GameState::PlayGame(PlayState::Playing))))))
-        .add_systems(Update, move_space_stars.run_if(in_state(GameState::PlayGame(PlayState::Splash))
+        .add_systems(Update, (move_space_stars, twinkle_space_stars).run_if(in_state(GameState::PlayGame(PlayState::Splash))
             .or(in_state(GameState::PlayGame(PlayState::Playing)))));
 }
 
@@ -285,6 +285,8 @@ pub fn gradient_health_bar_color(value: u16) -> Color {
 #[derive(Component)]
 struct SpaceStar {
     speed: f32,
+    phase: f32,
+    rate: f32,
 }
 
 fn spawn_space_stars(mut commands: Commands, asset_server: Res<AssetServer>, window: Single<&Window>) {
@@ -306,6 +308,10 @@ fn spawn_space_stars(mut commands: Commands, asset_server: Res<AssetServer>, win
             let speed = rng.random_range(speed_range.clone());
             let scale = rng.random_range(scale_range.clone());
 
+            // 随机初始化闪烁相位和速率
+            let phase = rng.random_range(0.0..std::f32::consts::TAU);
+            let rate = rng.random_range(1.0..3.0);
+
             commands.spawn((
                 Sprite {
                     image: texture.clone(),
@@ -314,7 +320,11 @@ fn spawn_space_stars(mut commands: Commands, asset_server: Res<AssetServer>, win
                     ..default()
                 },
                 Transform::from_translation(Vec3::new(x, y, z)).with_scale(Vec3::splat(scale)),
-                SpaceStar { speed },
+                SpaceStar {
+                    speed,
+                    phase,
+                    rate,
+                },
             ));
         }
     }
@@ -348,5 +358,15 @@ fn move_space_stars(
         if transform.translation.x < left_bound {
             transform.translation.x = right_bound;
         }
+    }
+}
+
+/// 星星闪烁
+fn twinkle_space_stars(time: Res<Time>, mut query: Query<(&mut Sprite, &mut SpaceStar)>) {
+    let dt = time.delta_secs();
+    for (mut sprite, mut star) in &mut query {
+        star.phase += star.rate * dt;
+        let brightness = 0.5 + 0.5 * (star.phase.sin());
+        sprite.color.set_alpha(brightness as f32);
     }
 }

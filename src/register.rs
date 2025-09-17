@@ -14,11 +14,11 @@ const PLAYER_AVATARS: [&str; 28] = [
 
 pub fn new_player_plugin(app: &mut App) {
     app
-        .add_systems(OnEnter(GameState::NewPlayer), new_player_setup)
-        .add_systems(OnExit(GameState::NewPlayer), new_player_exit)
-        .add_systems(Update, on_cancel_button.run_if(in_state(GameState::NewPlayer)))
-        .add_systems(Update, on_avatar_button.run_if(in_state(GameState::NewPlayer)))
-        .add_systems(Update, on_create_button.run_if(in_state(GameState::NewPlayer)));
+        .add_systems(OnEnter(GameState::Register), new_player_setup)
+        .add_systems(OnExit(GameState::Register), new_player_exit)
+        .add_systems(Update, on_cancel_button.run_if(in_state(GameState::Register)))
+        .add_systems(Update, on_avatar_button.run_if(in_state(GameState::Register)))
+        .add_systems(Update, on_create_button.run_if(in_state(GameState::Register)));
 }
 
 #[derive(Component, Default)]

@@ -1,12 +1,13 @@
 mod marker;
-mod logic;
+mod playing;
+mod splash;
 
 use rand::Rng;
 use bevy::app::App;
 use bevy::math::VectorSpace;
 use bevy::prelude::*;
 use bevy::window::WindowResized;
-use crate::{GameData, GameFonts, GameState, PlayState, Players};
+use crate::{GameData, GameFonts, GameState, PlayState};
 use crate::ui::*;
 use marker::*;
 
@@ -16,30 +17,29 @@ enum Character {
 }
 
 #[derive(Component)]
-struct PlayGameEntity;
+struct PlayingEntity;
 
 pub fn play_game_plugin(app: &mut App) {
     app
-        .add_systems(OnEnter(GameState::PlayGame(PlayState::Splash)), play_game_setup)
-        .add_systems(OnExit(GameState::PlayGame(PlayState::Confirm)), play_game_exit)
-        .add_systems(OnExit(GameState::PlayGame(PlayState::Splash)), game_splash_exit)
-        .add_systems(Update, logic::update_game_time)
+        .add_systems(OnEnter(GameState::Playing), playing_game_setup)
+        .add_systems(OnEnter(PlayState::Splash), splash::game_splash_setup)
+        .add_systems(OnEnter(PlayState::Playing), playing::game_player_setup)
+        .add_systems(Update, update_game_time)
         .add_systems(Update, on_window_resized.run_if(on_message::<WindowResized>
-            .and(in_state(GameState::PlayGame(PlayState::Splash))
-            .or(in_state(GameState::PlayGame(PlayState::Playing))))))
-        .add_systems(Update, (move_space_stars, twinkle_space_stars).run_if(in_state(GameState::PlayGame(PlayState::Splash))
-            .or(in_state(GameState::PlayGame(PlayState::Playing)))))
-        .add_systems(Update, splash_fade_system.run_if(in_state(GameState::PlayGame(PlayState::Splash))));
+            .and(in_state(GameState::Playing))))
+        .add_systems(Update, (move_space_stars, twinkle_space_stars).run_if(in_state(GameState::Playing)))
+        .add_systems(Update, splash::fade_tip_messages.run_if(in_state(PlayState::Splash)));
 }
 
-fn play_game_setup(mut commands: Commands,
-                   players: Res<Players>,
-                   game_data: Res<GameData>,
-                   fonts: Res<GameFonts>,
-                   asset_server: Res<AssetServer>,
-                   time: Res<Time>,
-                   window: Single<&Window>) {
+fn playing_game_setup(mut commands: Commands, 
+                      game_data: Res<GameData>, 
+                      fonts: Res<GameFonts>, 
+                      asset_server: Res<AssetServer>, 
+                      time: Res<Time>, 
+                      window: Single<&Window>, 
+                      mut next_state: ResMut<NextState<PlayState>>) {
     commands.spawn((
+        DespawnOnExit(GameState::Playing),
         Node {
             width: Val::Percent(100.),
             height: Val::Px(70.0),
@@ -55,7 +55,7 @@ fn play_game_setup(mut commands: Commands,
             ..default()
         },
         BackgroundColor(Color::NONE),
-        PlayGameEntity
+        PlayingEntity
     )).with_children(|builder| {
         // 左边的玩家头像及信息
         builder.spawn(
@@ -81,7 +81,7 @@ fn play_game_setup(mut commands: Commands,
                 },
             )
             .with_children(|builder| {
-                let player = players.get(&game_data.player);
+                let player = &game_data.player;
                 // 用户头像及升级进度条
                 builder.spawn(
                         Node {
@@ -125,7 +125,7 @@ fn play_game_setup(mut commands: Commands,
                         });
                     });
                 // 用户名称
-                spawn_info_text(builder, &game_data.player, INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
+                spawn_info_text(builder, &game_data.player.name, INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
                 // 用户等级
                 spawn_marked_image(builder, LevelStarImage, &asset_server, &format!("images/star-{}.png", player.level),
                                  Vec2::new(24.*(player.level as f32), 24.), 0., 0.);
@@ -212,15 +212,7 @@ fn play_game_setup(mut commands: Commands,
     });
 
     spawn_space_stars(&mut commands, &asset_server, window);
-    spawn_splash_animation(&mut commands, &asset_server, fonts);
-}
-
-fn play_game_exit(commands: Commands, query: Query<Entity, With<PlayGameEntity>>) {
-    cleanup_entities::<PlayGameEntity>(commands, query);
-}
-
-fn game_splash_exit(commands: Commands, query: Query<Entity, With<GameSplashEntity>>) {
-    cleanup_entities::<GameSplashEntity>(commands, query);
+    next_state.set(PlayState::Splash);
 }
 
 fn spawn_health_bar(
@@ -336,6 +328,26 @@ fn spawn_space_stars(commands: &mut Commands, asset_server: &AssetServer, window
     }
 }
 
+pub fn update_game_time(
+    time: Res<Time>,
+    mut query: Query<(&mut Text, &mut GameTime)>,
+) {
+    if let Ok((mut text, mut clock)) = query.single_mut() {
+        let elapsed = time.elapsed_secs_f64() - clock.start_time;
+        let total_seconds = elapsed as u64;
+
+        if total_seconds != clock.last_second {
+            clock.last_second = total_seconds;
+
+            let h = total_seconds / 3600;
+            let m = (total_seconds % 3600) / 60;
+            let s = total_seconds % 60;
+
+            *text = Text::new(format!("{:02}:{:02}:{:02}", h, m, s));
+        }
+    }
+}
+
 fn on_window_resized(
     mut resize_events: MessageReader<WindowResized>,
     mut commands: Commands,
@@ -374,108 +386,5 @@ fn twinkle_space_stars(time: Res<Time>, mut query: Query<(&mut Sprite, &mut Spac
         star.phase += star.rate * dt;
         let brightness = 0.5 + 0.5 * (star.phase.sin());
         sprite.color.set_alpha(brightness as f32);
-    }
-}
-
-fn spawn_splash_animation(commands: &mut Commands,
-                          asset_server: &AssetServer,
-                          fonts: Res<GameFonts>) {
-    commands.spawn((
-        Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            flex_direction: FlexDirection::Column,
-            ..default()
-        },
-        GameSplashEntity
-    ))
-        .with_children(|builder| {
-            builder.spawn((
-                Node {
-                    flex_direction: FlexDirection::Row,
-                    align_items: AlignItems::Center,
-                    margin: UiRect::all(Val::Px(5.0)),
-                    ..default()
-                },
-                SplashTextRow { timer: Timer::from_seconds(3.0, TimerMode::Once) }
-            ))
-                .with_children(|builder| {
-                    spawn_info_text(builder, "Ready Go!", Color::srgba_u8(135, 201, 22, 0),
-                                    fonts.normal_font.clone(), 48.);
-                });
-
-            let text_color = Color::srgba_u8(188, 190, 196, 0);
-            let key_color = Color::srgba_u8(255, 100, 100, 0);
-            builder.spawn((
-                Node {
-                    flex_direction: FlexDirection::Row,
-                    align_items: AlignItems::Center,
-                    margin: UiRect::all(Val::Px(5.0)),
-                    ..default()
-                },
-                SplashTextRow { timer: Timer::from_seconds(3.0, TimerMode::Once) }
-            ))
-                .with_children(|builder| {
-                    spawn_image_node(builder, &asset_server, "images/esc.png", Vec2::splat(50.0), 5., 0.);
-                    spawn_info_text(builder, "按下", text_color, fonts.ui_font.clone(), 32.);
-                    spawn_info_text(builder, "ESC键", key_color, fonts.ui_font.clone(), 32.);
-                    spawn_info_text(builder, "可以退出游戏", text_color, fonts.ui_font.clone(), 32.);
-                });
-
-            builder.spawn((
-                Node {
-                    flex_direction: FlexDirection::Row,
-                    align_items: AlignItems::Center,
-                    margin: UiRect::all(Val::Px(5.0)),
-                    ..default()
-                },
-                SplashTextRow { timer: Timer::from_seconds(3.0, TimerMode::Once) }
-            ))
-                .with_children(|builder| {
-                    spawn_image_node(builder, &asset_server, "images/space.png", Vec2::splat(50.0), 5., 0.);
-                    spawn_info_text(builder, "按下", text_color, fonts.ui_font.clone(), 32.);
-                    spawn_info_text(builder, "空格键", key_color, fonts.ui_font.clone(), 32.);
-                    spawn_info_text(builder, "暂停继续游戏", text_color, fonts.ui_font.clone(), 32.);
-                });
-        });
-}
-
-fn splash_fade_system(
-    time: Res<Time>,
-    mut query: Query<(&mut SplashTextRow, &Children)>,
-    mut text_query: Query<&mut TextColor>,
-    mut image_query: Query<&mut ImageNode>,
-    mut next_state: ResMut<NextState<GameState>>
-) {
-    for (mut fade, children) in &mut query {
-        fade.timer.tick(time.delta());
-        let t = fade.timer.elapsed_secs();
-        let (alpha, finished) = if t < 1. {
-            // 淡入
-            (t / 1., false)
-        } else if t < 2. {
-            // 保持
-            (1.0, false)
-        } else if t < 3.0 {
-            // 淡出
-            (1.0 - (t - 2.) / 1., false)
-        } else {
-            (0.0, true)
-        };
-
-        for child in children.iter() {
-            if let Ok(mut color) = text_query.get_mut(child) {
-                color.set_alpha(alpha);
-            }
-            if let Ok(mut img) = image_query.get_mut(child) {
-                img.color.set_alpha(alpha);
-            }
-        }
-
-        if finished {
-            next_state.set(GameState::PlayGame(PlayState::Playing));
-        }
     }
 }

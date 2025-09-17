@@ -5,8 +5,6 @@ use ui::*;
 use widgets;
 use crate::widgets::{ListItem, ListView, TextConfig};
 
-const MAX_PLAYERS_COUNT: usize = 7;
-
 pub fn startup_plugin(app: &mut App) {
     app
         .add_systems(OnEnter(GameState::Startup), startup_setup)
@@ -285,7 +283,7 @@ fn on_create_user_button(
 ) {
     if let Some(event) = reader.read().last()
         && query.get(event.entity).is_ok() {
-        next_state.set(GameState::NewPlayer);
+        next_state.set(GameState::Register);
     }
 }
 
@@ -305,14 +303,15 @@ fn on_player_selected(
     mut next_state: ResMut<NextState<GameState>>,
     mut reader: MessageReader<widgets::ListViewSelectionChanged>,
     query: Query<(), With<ListViewPlayer>>,
+    players: Res<Players>
 ) {
     if let Some(event) = reader.read().last()
         && query.get(event.entity).is_ok() {
         info!("Player {} selected to continue game", event.value);
         commands.insert_resource(GameData {
-            player: event.value.clone(),
+            player: players.get(&event.value).clone(),
             ..default()
         });
-        next_state.set(GameState::PlayGame(PlayState::Splash))
+        next_state.set(GameState::Playing)
     }
 }

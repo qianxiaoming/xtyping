@@ -2,11 +2,12 @@
 
 mod startup;
 mod widgets;
+mod register;
+mod playing;
 mod ui;
-mod new_player;
-mod play_game;
 
 use bevy::prelude::*;
+use bevy::dev_tools::states::*;
 use bevy::input_focus::InputFocus;
 use bevy::window::WindowPlugin;
 use serde::{Deserialize, Serialize};
@@ -25,35 +26,41 @@ fn main() {
         }))
         .init_resource::<InputFocus>()
         .init_state::<GameState>()
+        .add_sub_state::<PlayState>()
         .init_resource::<GameFonts>()
         .init_resource::<Players>()
-        .add_systems(OnEnter(GameState::InitResources), init_resources)
+        .add_systems(OnEnter(GameState::Init), init_resources)
         .add_systems(Startup, setup_camera)
         .add_plugins((
             startup::startup_plugin,
-            new_player::new_player_plugin,
-            play_game::play_game_plugin,
+            register::new_player_plugin,
+            playing::play_game_plugin,
             widgets::widgets_plugin
         ))
         .run();
 }
 
-/// 玩游戏过程中的可能状态
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, States)]
-enum PlayState {
-    Splash,
-    Playing,
-    Paused,
-    Confirm
-}
-
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
 enum GameState {
     #[default]
-    InitResources,
+    Init,
     Startup,
-    NewPlayer,
-    PlayGame(PlayState)
+    Register,
+    Playing
+}
+
+/// 玩游戏过程中的可能状态
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, SubStates)]
+#[source(GameState = GameState::Playing)]
+#[states(scoped_entities)]
+enum PlayState {
+    #[default]
+    Splash,    // 初始提示
+    Playing,   // 玩家交互
+    Paused,    // 暂停游戏
+    Exiting,   // 确认退出
+    Upgrading, // 升级祝贺
+    Failed     // 玩家失败
 }
 
 #[derive(Resource, Default)]
@@ -64,7 +71,7 @@ struct GameFonts {
     ui_font: Handle<Font>
 }
 
-#[derive(Deserialize, Serialize, Default)]
+#[derive(Deserialize, Serialize, Clone, Default)]
 struct Player {
     name: String,
     avatar: String,
@@ -75,6 +82,8 @@ struct Player {
 #[derive(Deserialize, Resource, Default)]
 struct Players(Vec<Player>);
 
+const MAX_PLAYERS_COUNT: usize = 7;
+
 impl Players {
     pub fn get(&self, name: &str) -> &Player {
         self.0.iter().find(|p| p.name == name).unwrap()
@@ -83,7 +92,7 @@ impl Players {
 
 #[derive(Resource, Default)]
 struct GameData {
-    pub player: String,
+    pub player: Player,
 }
 
 fn setup_camera(mut commands: Commands) {
@@ -91,11 +100,12 @@ fn setup_camera(mut commands: Commands) {
 }
 
 /// 初始化全局的字体、用户以及图片资源
-fn init_resources(mut players: ResMut<Players>,
-                  mut fonts: ResMut<GameFonts>,
-                  mut next: ResMut<NextState<GameState>>,
-                  asset_server: Res<AssetServer>
-                  ) {
+fn init_resources(
+    mut players: ResMut<Players>,
+    mut fonts: ResMut<GameFonts>,
+    mut next: ResMut<NextState<GameState>>,
+    asset_server: Res<AssetServer>
+) {
     fonts.title_font = asset_server.load("fonts/sharphei.ttf");
     fonts.normal_font = asset_server.load("fonts/happyfont.ttf");
     fonts.info_font = asset_server.load("fonts/sans.ttf");

@@ -1,5 +1,5 @@
 use bevy::prelude::{Component, Timer};
-use crate::play_game::Character;
+use crate::playing::Character;
 
 /// 游戏时间显示
 #[derive(Component)]
@@ -44,9 +44,10 @@ pub struct ShieldCounter;
 
 /// Splash动画元素
 #[derive(Component)]
-pub struct GameSplashEntity;
-
-#[derive(Component)]
 pub struct SplashTextRow {
     pub timer: Timer,
 }
+
+/// 玩家的战斗机
+#[derive(Component)]
+pub struct FighterJet;

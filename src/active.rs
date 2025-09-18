@@ -1,4 +1,4 @@
-pub mod components;
+pub mod common;
 mod playing;
 mod splash;
 mod spawn;
@@ -7,34 +7,36 @@ use rand::Rng;
 use bevy::app::App;
 use bevy::math::VectorSpace;
 use bevy::prelude::*;
-use bevy::render::render_resource::encase::private::RuntimeSizedArray;
 use bevy::window::WindowResized;
-use crate::{GameData, GameFonts, GameState, PlayState, Route, DEFAULT_ROUTE_HEIGHT, GAME_INFO_AREA_HEIGHT, GAME_INFO_AREA_MARGIN, MAX_ROUTE_COUNT};
+use crate::{GamePlayer, GameRoutes, GameLetters, GameFonts, GameState, PlayState, Route, GameSettings};
+use crate::{DEFAULT_ROUTE_HEIGHT, GAME_INFO_AREA_HEIGHT, GAME_INFO_AREA_MARGIN, MAX_ROUTE_COUNT};
 use crate::ui::*;
-use components::*;
+use common::*;
 
 pub fn play_game_plugin(app: &mut App) {
     app
-        .add_systems(OnEnter(GameState::Playing), playing_game_setup)
+        .init_resource::<GameRoutes>()
+        .init_resource::<GameLetters>()
+        .add_systems(OnEnter(GameState::Active), playing_game_setup)
         .add_systems(OnEnter(PlayState::Splash), splash::game_splash_setup)
         .add_systems(OnEnter(PlayState::Playing), playing::playground_setup)
         .add_systems(Update, update_game_time)
         .add_systems(Update, on_window_resized.run_if(on_message::<WindowResized>
-            .and(in_state(GameState::Playing))))
-        .add_systems(Update, (move_space_stars, twinkle_space_stars).run_if(in_state(GameState::Playing)))
+            .and(in_state(GameState::Active))))
+        .add_systems(Update, (move_space_stars, twinkle_space_stars).run_if(in_state(GameState::Active)))
         .add_systems(Update, splash::fade_tip_messages.run_if(in_state(PlayState::Splash)))
         .add_systems(Update, spawn::spawn_aircraft.run_if(in_state(PlayState::Playing)));
 }
 
 fn playing_game_setup(mut commands: Commands, 
-                      game_data: Res<GameData>,
+                      game_player: Res<GamePlayer>,
                       fonts: Res<GameFonts>, 
                       asset_server: Res<AssetServer>, 
                       time: Res<Time>, 
                       window: Single<&Window>, 
                       mut next_state: ResMut<NextState<PlayState>>) {
     commands.spawn((
-        DespawnOnExit(GameState::Playing),
+        DespawnOnExit(GameState::Active),
         Node {
             width: Val::Percent(100.),
             height: Val::Px(GAME_INFO_AREA_HEIGHT),
@@ -75,7 +77,7 @@ fn playing_game_setup(mut commands: Commands,
                 },
             )
             .with_children(|builder| {
-                let player = &game_data.player;
+                let player = &game_player.0;
                 // 用户头像及升级进度条
                 builder.spawn(
                         Node {
@@ -119,7 +121,7 @@ fn playing_game_setup(mut commands: Commands,
                         });
                     });
                 // 用户名称
-                spawn_info_text(builder, &game_data.player.name, INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
+                spawn_info_text(builder, &game_player.0.name, INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
                 // 用户等级
                 spawn_marked_image(builder, LevelStarImage, &asset_server, &format!("images/star-{}.png", player.level),
                                  Vec2::new(24.*(player.level as f32), 24.), 0., 0.);
@@ -348,7 +350,7 @@ fn compute_route_count(window_height: f32) -> usize {
 fn on_window_resized(
     mut resize_events: MessageReader<WindowResized>,
     mut commands: Commands,
-    mut game_data: ResMut<GameData>,
+    mut game_routes: ResMut<GameRoutes>,
     asset_server: Res<AssetServer>,
     stars: Query<Entity, With<SpaceStar>>,
     mut fighter_jet: Single<&mut Transform, With<FighterJet>>,
@@ -360,10 +362,10 @@ fn on_window_resized(
 
         // 重新计算航道信息
         let route_count = compute_route_count(window.height());
-        let last_route_count = game_data.empty_routes.len() + game_data.used_routes.len();
+        let last_route_count = game_routes.empty_routes.len() + game_routes.used_routes.len();
         if route_count > last_route_count {
             for i in 0..route_count-last_route_count {
-                game_data.empty_routes.push(Route {
+                game_routes.empty_routes.push(Route {
                     id: (i+last_route_count) as i32,
                     entities: Vec::new(),
                 })

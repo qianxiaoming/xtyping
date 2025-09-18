@@ -3,7 +3,7 @@
 mod startup;
 mod widgets;
 mod register;
-mod playing;
+mod active;
 mod ui;
 
 use bevy::prelude::*;
@@ -35,7 +35,7 @@ fn main() {
         .add_plugins((
             startup::startup_plugin,
             register::new_player_plugin,
-            playing::play_game_plugin,
+            active::play_game_plugin,
             widgets::widgets_plugin
         ))
         .run();
@@ -47,12 +47,12 @@ enum GameState {
     Init,
     Startup,
     Register,
-    Playing
+    Active
 }
 
 /// 玩游戏过程中的可能状态
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, SubStates)]
-#[source(GameState = GameState::Playing)]
+#[source(GameState = GameState::Active)]
 #[states(scoped_entities)]
 enum PlayState {
     #[default]
@@ -85,6 +85,7 @@ struct Player {
 struct Players(Vec<Player>);
 
 const MAX_PLAYERS_COUNT: usize = 7;
+const MAX_PLAYER_LEVELS: usize = 5;
 
 impl Players {
     pub fn get(&self, name: &str) -> &Player {
@@ -111,10 +112,18 @@ impl Route {
 }
 
 #[derive(Resource, Default)]
-struct GameData {
-    pub player: Player,
+struct GamePlayer(pub Player);
+
+#[derive(Resource, Default)]
+struct GameRoutes {
     pub empty_routes: Vec<Route>,
     pub used_routes: Vec<Route>,
+}
+
+#[derive(Resource, Default)]
+struct GameLetters {
+    pub candidate_letters: Vec<char>,
+    pub choosed_letters: Vec<char>
 }
 
 #[derive(Resource)]
@@ -125,14 +134,37 @@ struct GameSettings {
     pub aircraft_speeds: Vec<(f32, f32)>,
     // 敌机的开火距离
     pub firing_distance: f32,
+    // 级别对应的字母
+    pub level_letters: Vec<Vec<char>>,
 }
 
 impl Default for GameSettings {
     fn default() -> Self {
+        let letters: Vec<Vec<char>> = [
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            "1234567890",
+            "+-*/=?,.!;",
+            ":\"#*<>%'()",
+            "[]{}@_|"
+        ]
+            .iter()
+            .map(|s| s.chars().collect())
+            .collect();
+
+        let mut level_letters: Vec<Vec<char>> = Vec::with_capacity(MAX_PLAYER_LEVELS);
+        let mut current = Vec::new();
+        for i in 0..MAX_PLAYER_LEVELS {
+            if i < letters.len() {
+                current.extend(&letters[i]);
+            }
+            level_letters.push(current.clone());
+        }
+
         GameSettings {
             aircraft_intervals: vec![(3., 8.),(2.5, 5.),(2., 4.),(1., 2.),(0.3, 1.2)],
             aircraft_speeds: vec![(20., 30.),(20., 40.),(35., 60.),(60., 80.),(80., 100.)],
-            firing_distance: 200.
+            firing_distance: 200.,
+            level_letters
         }
     }
 }

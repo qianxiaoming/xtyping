@@ -3,7 +3,7 @@ use bevy::color::Color;
 use bevy::math::Vec2;
 use bevy::prelude::*;
 use crate::{GameFonts, PlayState};
-use crate::playing::components::SplashTextRow;
+use crate::active::common::SplashTextRow;
 use crate::ui::{spawn_image_node, spawn_info_text};
 
 pub fn game_splash_setup(mut commands: Commands,

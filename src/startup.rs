@@ -308,10 +308,7 @@ fn on_player_selected(
     if let Some(event) = reader.read().last()
         && query.get(event.entity).is_ok() {
         info!("Player {} selected to continue game", event.value);
-        commands.insert_resource(GameData {
-            player: players.get(&event.value).clone(),
-            ..default()
-        });
-        next_state.set(GameState::Playing)
+        commands.insert_resource(GamePlayer(players.get(&event.value).clone()));
+        next_state.set(GameState::Active)
     }
 }

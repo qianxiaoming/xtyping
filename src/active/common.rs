@@ -1,5 +1,5 @@
+use bevy::color::Color;
 use bevy::prelude::{Component, Timer};
-use crate::playing::Character;
 
 /// 游戏时间显示
 #[derive(Component)]
@@ -22,7 +22,7 @@ pub struct PlayerScore;
 
 /// 玩家/敌方的血条
 #[derive(Component)]
-pub struct HealthBar(pub Character);
+pub struct HealthBar(pub bool);
 
 pub const HEALTH_BAR_LEN: u16 = 100;
 
@@ -36,7 +36,7 @@ pub struct BombCounter;
 
 /// 血包数量统计文本
 #[derive(Component)]
-pub struct BloodBagCounter;
+pub struct HealthPackCounter;
 
 /// 护盾数量统计文本
 #[derive(Component)]
@@ -51,3 +51,32 @@ pub struct SplashTextRow {
 /// 玩家的战斗机
 #[derive(Component)]
 pub struct FighterJet;
+
+pub const FIGHTER_JET_MARGIN: f32 = 80.0;
+pub const FIGHTER_JET_SCALE: f32 = 0.3;
+
+#[derive(Component)]
+pub struct FlyingUnit {
+    pub route: i32,
+    pub speed: f32,
+}
+
+#[derive(Component)]
+pub struct Aircraft;
+
+pub const AIRCRAFT_KIND: i32 = 3;
+pub const AIRCRAFT_SIZE: f32 = 300.;
+// pub const AIRCRAFT_COLORS: [Color; 3] = [
+//     Color::srgb_u8(66, 201, 36),
+//     Color::srgb_u8(220, 31, 11),
+//     Color::srgb_u8(255, 222, 0)
+// ];
+
+#[derive(Component)]
+pub struct Bomb;
+
+#[derive(Component)]
+pub struct HealthPack;
+
+#[derive(Component)]
+pub struct Shield;

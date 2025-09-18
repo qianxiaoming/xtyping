@@ -13,7 +13,7 @@ use bevy::window::WindowPlugin;
 use serde::{Deserialize, Serialize};
 
 const GAME_APP_TITLE: &str = "超级打字练习";
-const PLAYERS_DATA_FILE: &str = "players.dat";
+const PLAYERS_DATA_FILE: &str = "players.json";
 
 fn main() {
     App::new()
@@ -24,9 +24,10 @@ fn main() {
             }),
             ..default()
         }))
-        .init_resource::<InputFocus>()
         .init_state::<GameState>()
         .add_sub_state::<PlayState>()
+        .init_resource::<InputFocus>()
+        .init_resource::<GameSettings>()
         .init_resource::<GameFonts>()
         .init_resource::<Players>()
         .add_systems(OnEnter(GameState::Init), init_resources)
@@ -68,7 +69,8 @@ struct GameFonts {
     title_font: Handle<Font>,
     normal_font: Handle<Font>,
     info_font: Handle<Font>,
-    ui_font: Handle<Font>
+    ui_font: Handle<Font>,
+    letter_font: Handle<Font>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Default)]
@@ -90,9 +92,49 @@ impl Players {
     }
 }
 
+const DEFAULT_ROUTE_HEIGHT: f32 = 40.;
+const MAX_ROUTE_COUNT: usize = 64;
+const GAME_INFO_AREA_HEIGHT: f32 = 70.;
+const GAME_INFO_AREA_MARGIN: f32 = 30.;
+
+#[derive(Clone, Default)]
+struct Route {
+    pub id: i32,
+    pub entities: Vec<Entity>,
+}
+
+impl Route {
+    pub fn get_position(&self, window_height: f32) -> f32 {
+        let start = window_height / 2. - GAME_INFO_AREA_HEIGHT - GAME_INFO_AREA_MARGIN;
+        start - self.id as f32 * DEFAULT_ROUTE_HEIGHT - DEFAULT_ROUTE_HEIGHT / 2.
+    }
+}
+
 #[derive(Resource, Default)]
 struct GameData {
     pub player: Player,
+    pub empty_routes: Vec<Route>,
+    pub used_routes: Vec<Route>,
+}
+
+#[derive(Resource)]
+struct GameSettings {
+    // 敌机出现的时间间隔
+    pub aircraft_intervals: Vec<(f32, f32)>,
+    // 敌机的飞行速度区间
+    pub aircraft_speeds: Vec<(f32, f32)>,
+    // 敌机的开火距离
+    pub firing_distance: f32,
+}
+
+impl Default for GameSettings {
+    fn default() -> Self {
+        GameSettings {
+            aircraft_intervals: vec![(3., 8.),(2.5, 5.),(2., 4.),(1., 2.),(0.3, 1.2)],
+            aircraft_speeds: vec![(20., 30.),(20., 40.),(35., 60.),(60., 80.),(80., 100.)],
+            firing_distance: 200.
+        }
+    }
 }
 
 fn setup_camera(mut commands: Commands) {
@@ -110,6 +152,7 @@ fn init_resources(
     fonts.normal_font = asset_server.load("fonts/happyfont.ttf");
     fonts.info_font = asset_server.load("fonts/sans.ttf");
     fonts.ui_font = asset_server.load("fonts/cubehei.ttf");
+    fonts.letter_font = asset_server.load("fonts/letter-bold.ttf");
 
     widgets::UI_BUTTON_FONT.set(fonts.ui_font.clone()).ok();
 

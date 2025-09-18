@@ -125,7 +125,7 @@ fn default_screen_setup(builder: &mut ChildSpawnerCommands, fonts: Res<GameFonts
                     ..default()
                 }
             ).with_children(|builder| {
-                spawn_image_node(builder, &asset_server, "images/plane_3_yellow.png", Vec2::splat(60.), 10.0, 5.0);
+                spawn_image_node(builder, &asset_server, "images/plane_desc.png", Vec2::splat(60.), 10.0, 5.0);
                 spawn_item_desc_node(builder)
                     .with_children(|builder| {
                         spawn_info_text(builder, "敌机", Color::srgb_u8(251, 188, 8),

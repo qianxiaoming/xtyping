@@ -1,38 +1,33 @@
-mod marker;
+pub mod components;
 mod playing;
 mod splash;
+mod spawn;
 
 use rand::Rng;
 use bevy::app::App;
 use bevy::math::VectorSpace;
 use bevy::prelude::*;
+use bevy::render::render_resource::encase::private::RuntimeSizedArray;
 use bevy::window::WindowResized;
-use crate::{GameData, GameFonts, GameState, PlayState};
+use crate::{GameData, GameFonts, GameState, PlayState, Route, DEFAULT_ROUTE_HEIGHT, GAME_INFO_AREA_HEIGHT, GAME_INFO_AREA_MARGIN, MAX_ROUTE_COUNT};
 use crate::ui::*;
-use marker::*;
-
-enum Character {
-    Player,
-    Enemy
-}
-
-#[derive(Component)]
-struct PlayingEntity;
+use components::*;
 
 pub fn play_game_plugin(app: &mut App) {
     app
         .add_systems(OnEnter(GameState::Playing), playing_game_setup)
         .add_systems(OnEnter(PlayState::Splash), splash::game_splash_setup)
-        .add_systems(OnEnter(PlayState::Playing), playing::game_player_setup)
+        .add_systems(OnEnter(PlayState::Playing), playing::playground_setup)
         .add_systems(Update, update_game_time)
         .add_systems(Update, on_window_resized.run_if(on_message::<WindowResized>
             .and(in_state(GameState::Playing))))
         .add_systems(Update, (move_space_stars, twinkle_space_stars).run_if(in_state(GameState::Playing)))
-        .add_systems(Update, splash::fade_tip_messages.run_if(in_state(PlayState::Splash)));
+        .add_systems(Update, splash::fade_tip_messages.run_if(in_state(PlayState::Splash)))
+        .add_systems(Update, spawn::spawn_aircraft.run_if(in_state(PlayState::Playing)));
 }
 
 fn playing_game_setup(mut commands: Commands, 
-                      game_data: Res<GameData>, 
+                      game_data: Res<GameData>,
                       fonts: Res<GameFonts>, 
                       asset_server: Res<AssetServer>, 
                       time: Res<Time>, 
@@ -42,7 +37,7 @@ fn playing_game_setup(mut commands: Commands,
         DespawnOnExit(GameState::Playing),
         Node {
             width: Val::Percent(100.),
-            height: Val::Px(70.0),
+            height: Val::Px(GAME_INFO_AREA_HEIGHT),
             display: Display::Grid,
             margin: UiRect::top(Val::Px(10.0)),
             grid_template_columns: vec![
@@ -54,8 +49,7 @@ fn playing_game_setup(mut commands: Commands,
             column_gap: Val::Px(4.0),
             ..default()
         },
-        BackgroundColor(Color::NONE),
-        PlayingEntity
+        BackgroundColor(Color::NONE)
     )).with_children(|builder| {
         // 左边的玩家头像及信息
         builder.spawn(
@@ -137,7 +131,7 @@ fn playing_game_setup(mut commands: Commands,
                     spawn_marked_text(builder, PlayerScore, &format!("{}", player.score), INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
                 });
                 // 玩家血条
-                spawn_health_bar(builder, HealthBar(Character::Player), 100, 3);
+                spawn_health_bar(builder, HealthBar(true), 100, 3);
             });
 
         // 中间的对战图标及时间
@@ -200,14 +194,14 @@ fn playing_game_setup(mut commands: Commands,
             });
             builder.spawn(Node::default()).with_children(|builder| {
                 spawn_image_node(builder, &asset_server, "images/first-aid-kit.png", Vec2::splat(30.), 2., 4.);
-                spawn_marked_text(builder, BloodBagCounter, "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
+                spawn_marked_text(builder, HealthPackCounter, "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
             });
             builder.spawn(Node::default()).with_children(|builder| {
                 spawn_image_node(builder, &asset_server, "images/shield.png", Vec2::splat(30.), 2., 4.);
                 spawn_marked_text(builder, ShieldCounter, "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
             });
             // 敌方血条
-            spawn_health_bar(builder, HealthBar(Character::Enemy), 100, 4);
+            spawn_health_bar(builder, HealthBar(false), 100, 4);
         });
     });
 
@@ -244,10 +238,7 @@ fn spawn_health_bar(
                 ..default()
             }
         ).with_children(|builder| {
-            let index_fn: fn(u16) -> u16 = match health_bar {
-                HealthBar(Character::Player) => |i| i,
-                HealthBar(Character::Enemy) => |i| HEALTH_BAR_LEN - i,
-            };
+            let index_fn: fn(u16) -> u16 = if health_bar.0 { |i| i } else { |i| HEALTH_BAR_LEN - i  };
             for i in 0..HEALTH_BAR_LEN {
                 let color = if i < health {
                     gradient_health_bar_color(index_fn(i))
@@ -348,14 +339,38 @@ pub fn update_game_time(
     }
 }
 
+fn compute_route_count(window_height: f32) -> usize {
+    let total_height = window_height - GAME_INFO_AREA_HEIGHT - GAME_INFO_AREA_MARGIN;
+    let mut route_count = (total_height / DEFAULT_ROUTE_HEIGHT) as usize;
+    if route_count > MAX_ROUTE_COUNT { MAX_ROUTE_COUNT } else { route_count }
+}
+
 fn on_window_resized(
     mut resize_events: MessageReader<WindowResized>,
     mut commands: Commands,
+    mut game_data: ResMut<GameData>,
     asset_server: Res<AssetServer>,
     stars: Query<Entity, With<SpaceStar>>,
+    mut fighter_jet: Single<&mut Transform, With<FighterJet>>,
     window: Single<&Window>
 ) {
     if let Some(e) = resize_events.read().last() {
+        // 调整玩家战斗机位置
+        fighter_jet.translation.x = FIGHTER_JET_MARGIN - window.width()/2.;
+
+        // 重新计算航道信息
+        let route_count = compute_route_count(window.height());
+        let last_route_count = game_data.empty_routes.len() + game_data.used_routes.len();
+        if route_count > last_route_count {
+            for i in 0..route_count-last_route_count {
+                game_data.empty_routes.push(Route {
+                    id: (i+last_route_count) as i32,
+                    entities: Vec::new(),
+                })
+            }
+        }
+
+        // 重新生成星空
         for entity in &stars {
             commands.entity(entity).despawn();
         }

@@ -133,14 +133,18 @@ struct GameLetters {
 struct GameSettings {
     // 不同用户级别对应的字母
     pub level_letters: Vec<Vec<char>>,
+    // 不同用户级别对应的飞行速度区间
+    pub level_speeds: Vec<(f32, f32)>,
     // 敌机出现的时间间隔
     pub aircraft_intervals: Vec<(f32, f32)>,
-    // 敌机的飞行速度区间
-    pub aircraft_speeds: Vec<(f32, f32)>,
     // 敌机的开火距离
     pub firing_distance: f32,
     // 炸弹出现的时间间隔
     pub bomb_intervals: Vec<(f32, f32)>,
+    // 护盾出现的时间间隔
+    pub shield_intervals: Vec<(f32, f32)>,
+    // 血包出现的时间间隔
+    pub health_pack_intervals: Vec<(f32, f32)>,
 }
 
 impl Default for GameSettings {
@@ -167,10 +171,12 @@ impl Default for GameSettings {
 
         GameSettings {
             level_letters,
+            level_speeds: vec![(15., 30.),(40., 80.),(80., 120.),(120., 150.),(150., 200.)],
             aircraft_intervals: vec![(5., 8.),(4., 6.),(2., 4.),(1., 2.),(0.3, 1.2)],
-            aircraft_speeds: vec![(15., 30.),(40., 80.),(80., 120.),(120., 150.),(150., 200.)],
             firing_distance: 200.,
-            bomb_intervals: vec![(30., 50.),(40., 50.),(50., 80.),(60., 90.),(90., 150.)]
+            bomb_intervals: vec![(60., 90.),(90., 120.),(120., 150.),(150., 300.),(300., 500.)],
+            shield_intervals: vec![(80., 100.),(100., 150.),(150., 250.),(250., 300.),(300., 350.)],
+            health_pack_intervals: vec![(120., 180.),(200., 250.),(300., 350.),(400., 450.),(500., 600.)],
         }
     }
 }

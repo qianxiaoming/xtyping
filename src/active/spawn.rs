@@ -1,4 +1,5 @@
 use rand::Rng;
+use serde::Deserialize;
 use bevy::asset::AssetServer;
 use bevy::color::Color;
 use bevy::math::Vec3;
@@ -59,7 +60,7 @@ pub fn spawn_aircraft(mut commands: Commands,
         // 生成敌机
         let kind = rng.random_range(1..=AIRCRAFT_KIND);
         let texture = asset_server.load(format!("images/aircraft_{}.png", kind));
-        let speed = game_settings.aircraft_speeds[level - 1];
+        let speed = game_settings.level_speeds[level - 1];
         let id = commands.spawn((
             Sprite {
                 image: texture.clone(),
@@ -82,7 +83,7 @@ pub fn spawn_aircraft(mut commands: Commands,
                     font_size: TARGET_LETTER_SIZE * window.scale_factor(),
                     ..Default::default()
                 },
-                TextColor(Color::srgb_u8(88, 251, 254)),
+                TextColor(TARGET_LETTER_COLOR),
                 Transform::from_translation(Vec3::new(AIRCRAFT_SIZE/2.+TARGET_LETTER_SIZE/2.+10., 0.0, 0.0)),
             )]
         )).id();
@@ -96,34 +97,96 @@ pub fn spawn_aircraft(mut commands: Commands,
     }
 }
 
-#[derive(Resource, Default)]
-pub struct BombSpawnState {
+#[derive(Default)]
+pub struct SpawnState {
     pub timer: Timer,
     pub count: usize,
-    pub spawn: bool
+    pub spawn: bool,
+    pub texture: String,
+    pub speeds: Vec<(f32, f32)>,
+    pub intervals: Vec<(f32, f32)>,
 }
 
-pub fn spawn_bomb(mut commands: Commands,
-                  mut state: ResMut<BombSpawnState>,
-                  mut game_routes: ResMut<GameRoutes>,
-                  mut game_letters: ResMut<GameLetters>,
-                  game_player: Res<GamePlayer>,
-                  time: Res<Time>,
-                  asset_server: Res<AssetServer>,
-                  game_settings: Res<GameSettings>,
-                  game_fonts: Res<GameFonts>,
-                  window: Single<&Window>) {
+#[derive(Resource)]
+pub struct BombSpawnState(pub SpawnState);
+
+impl Default for BombSpawnState {
+    fn default() -> Self {
+        BombSpawnState(SpawnState {
+            texture: "images/bomb.png".into(),
+            ..default()
+        })
+    }
+}
+
+impl AsMut<SpawnState> for BombSpawnState {
+    fn as_mut(&mut self) -> &mut SpawnState {
+        &mut self.0
+    }
+}
+
+#[derive(Resource)]
+pub struct ShieldSpawnState(pub SpawnState);
+
+impl Default for ShieldSpawnState {
+    fn default() -> Self {
+        ShieldSpawnState(SpawnState {
+            texture: "images/shield.png".into(),
+            ..default()
+        })
+    }
+}
+
+impl AsMut<SpawnState> for ShieldSpawnState {
+    fn as_mut(&mut self) -> &mut SpawnState {
+        &mut self.0
+    }
+}
+
+#[derive(Resource)]
+pub struct HealthPackSpawnState(pub SpawnState);
+
+impl Default for HealthPackSpawnState {
+    fn default() -> Self {
+        HealthPackSpawnState(SpawnState {
+            texture: "images/first-aid-kit.png".into(),
+            ..default()
+        })
+    }
+}
+
+impl AsMut<SpawnState> for HealthPackSpawnState {
+    fn as_mut(&mut self) -> &mut SpawnState {
+        &mut self.0
+    }
+}
+
+pub fn spawn_equipment<State: Resource, Marker: Default+Component>(
+    mut commands: Commands,
+    mut spawn_state: ResMut<State>,
+    mut game_routes: ResMut<GameRoutes>,
+    mut game_letters: ResMut<GameLetters>,
+    game_player: Res<GamePlayer>,
+    time: Res<Time>,
+    asset_server: Res<AssetServer>,
+    game_fonts: Res<GameFonts>,
+    window: Single<&Window>
+)
+where
+    State: AsMut<SpawnState>
+{
+    let state = spawn_state.as_mut().as_mut();
     if state.timer.tick(time.delta()).just_finished() {
-        // 达到了创建新炸弹的时间（跳过第一次生成）
+        // 达到了创建的时间
         let mut rng = rand::rng();
         let level = game_player.player.level as usize;
         if state.spawn {
             // 随机选择一个将要使用的航道
             let route = random_route(&mut game_routes, &mut rng);
             let letter = random_letter(&mut game_letters, &mut rng);
-            // 生成炸弹
-            let texture = asset_server.load("images/bomb.png");
-            let speed = game_settings.aircraft_speeds[level - 1];
+            // 生成装备
+            let texture = asset_server.load(state.texture.clone());
+            let speed = state.speeds[level - 1];
             let id = commands.spawn((
                 Sprite {
                     image: texture.clone(),
@@ -131,14 +194,14 @@ pub fn spawn_bomb(mut commands: Commands,
                     color: Color::WHITE,
                     ..default()
                 },
-                Transform::from_translation(Vec3::new(window.width()/2., route.get_position(window.height()), 0.))
-                    .with_scale(Vec3::splat(FIGHTER_JET_SCALE*0.6)),
+                Transform::from_translation(Vec3::new(window.width() / 2., route.get_position(window.height()), 0.))
+                    .with_scale(Vec3::splat(FIGHTER_JET_SCALE * 0.6)),
                 FlyingUnit {
                     route: route.id,
                     letter,
                     speed: rng.random_range(speed.0..=speed.1),
                 },
-                Bomb,
+                Marker::default(),
                 children![(
                     Text2d::new(letter),
                     TextFont {
@@ -146,8 +209,8 @@ pub fn spawn_bomb(mut commands: Commands,
                         font_size: TARGET_LETTER_SIZE * window.scale_factor(),
                         ..Default::default()
                     },
-                    TextColor(Color::srgb_u8(88, 251, 254)),
-                    Transform::from_translation(Vec3::new(AIRCRAFT_SIZE/2.+TARGET_LETTER_SIZE/2., 0., 0.)),
+                    TextColor(TARGET_LETTER_COLOR),
+                    Transform::from_translation(Vec3::new(0., -30., 0.)).with_scale(Vec3::splat(0.8)),
                 )]
             )).id();
             route.entities.push(id);
@@ -156,7 +219,7 @@ pub fn spawn_bomb(mut commands: Commands,
         state.spawn = true;
 
         // 重置到新的随机时间
-        let range = game_settings.bomb_intervals[level - 1];
+        let range = state.intervals[level - 1];
         let next_duration = rng.random_range(range.0..=range.1);
         state.timer = Timer::from_seconds(next_duration, TimerMode::Once);
     }

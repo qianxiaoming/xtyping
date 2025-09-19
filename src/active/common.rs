@@ -57,6 +57,7 @@ pub const FIGHTER_JET_SCALE: f32 = 0.3;
 pub const FIGHTER_JET_SIZE: f32 = 300.;
 
 pub const TARGET_LETTER_SIZE: f32 = 88.;
+pub const TARGET_LETTER_COLOR: Color = Color::srgb_u8(88, 251, 254);
 
 #[derive(Component)]
 pub struct FlyingUnit {
@@ -76,11 +77,11 @@ pub const AIRCRAFT_SIZE: f32 = 300.;
 //     Color::srgb_u8(255, 222, 0)
 // ];
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Bomb;
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct HealthPack;
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Shield;

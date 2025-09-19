@@ -12,7 +12,7 @@ use crate::{GamePlayer, GameRoutes, GameLetters, GameFonts, GameState, PlayState
 use crate::{DEFAULT_ROUTE_HEIGHT, GAME_INFO_AREA_HEIGHT, GAME_INFO_AREA_MARGIN, MAX_ROUTE_COUNT};
 use crate::ui::*;
 use common::*;
-use crate::active::spawn::{AircraftSpawnState, BombSpawnState};
+use crate::active::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState};
 
 pub fn play_game_plugin(app: &mut App) {
     app
@@ -20,6 +20,8 @@ pub fn play_game_plugin(app: &mut App) {
         .init_resource::<GameLetters>()
         .init_resource::<AircraftSpawnState>()
         .init_resource::<BombSpawnState>()
+        .init_resource::<ShieldSpawnState>()
+        .init_resource::<HealthPackSpawnState>()
         .add_systems(OnEnter(GameState::Active), playing_game_setup)
         .add_systems(OnEnter(PlayState::Splash), splash::game_splash_setup)
         .add_systems(OnEnter(PlayState::Playing), playing::playground_setup)
@@ -28,17 +30,24 @@ pub fn play_game_plugin(app: &mut App) {
             .and(in_state(GameState::Active))))
         .add_systems(Update, (move_space_stars, twinkle_space_stars).run_if(in_state(GameState::Active)))
         .add_systems(Update, splash::fade_tip_messages.run_if(in_state(PlayState::Splash)))
-        .add_systems(Update, (spawn::spawn_aircraft, spawn::spawn_bomb, playing::move_fly_unit).run_if(in_state(PlayState::Playing)));
+        .add_systems(Update, (spawn::spawn_aircraft,
+                              spawn::spawn_equipment::<BombSpawnState, Bomb>,
+                              spawn::spawn_equipment::<ShieldSpawnState, Shield>,
+                              spawn::spawn_equipment::<HealthPackSpawnState, HealthPack>,
+                              playing::move_fly_unit).run_if(in_state(PlayState::Playing)));
 }
 
 fn playing_game_setup(mut commands: Commands, 
                       game_player: Res<GamePlayer>,
+                      game_settings: Res<GameSettings>,
                       fonts: Res<GameFonts>, 
                       asset_server: Res<AssetServer>, 
                       time: Res<Time>, 
                       window: Single<&Window>,
                       mut aircraft_spawn_state: ResMut<AircraftSpawnState>,
                       mut bomb_spawn_state: ResMut<BombSpawnState>,
+                      mut shield_spawn_state: ResMut<ShieldSpawnState>,
+                      mut health_pack_spawn_state: ResMut<HealthPackSpawnState>,
                       mut next_state: ResMut<NextState<PlayState>>) {
     commands.spawn((
         DespawnOnExit(GameState::Active),
@@ -214,7 +223,24 @@ fn playing_game_setup(mut commands: Commands,
     spawn_space_stars(&mut commands, &asset_server, window);
 
     *aircraft_spawn_state = AircraftSpawnState::default();
+
+    // 初始化炸弹的生成参数
     *bomb_spawn_state = BombSpawnState::default();
+    let state = &mut bomb_spawn_state.as_mut().0;
+    state.speeds = game_settings.level_speeds.clone();
+    state.intervals = game_settings.bomb_intervals.clone();
+
+    // 初始化护盾的生成参数
+    *shield_spawn_state = ShieldSpawnState::default();
+    let state = &mut shield_spawn_state.as_mut().0;
+    state.speeds = game_settings.level_speeds.clone();
+    state.intervals = game_settings.shield_intervals.clone();
+
+    // 初始化血包的生成参数
+    *health_pack_spawn_state = HealthPackSpawnState::default();
+    let state = &mut health_pack_spawn_state.as_mut().0;
+    state.speeds = game_settings.level_speeds.clone();
+    state.intervals = game_settings.health_pack_intervals.clone();
 
     next_state.set(PlayState::Splash);
 }

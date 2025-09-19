@@ -9,12 +9,12 @@ use crate::active::compute_route_count;
 pub fn playground_setup(mut commands: Commands,
                         mut game_routes: ResMut<GameRoutes>,
                         mut game_letters: ResMut<GameLetters>,
-                        game_player: Res<GamePlayer>,
+                        mut game_player: ResMut<GamePlayer>,
                         game_settings: Res<GameSettings>,
                         asset_server: Res<AssetServer>,
                         window: Single<&Window>) {
     // 玩家的战斗机
-    let fighter_jet_path = format!("images/fighter_jet_{}.png", game_player.0.level);
+    let fighter_jet_path = format!("images/fighter_jet_{}.png", game_player.player.level);
     let texture = asset_server.load(fighter_jet_path);
     commands.spawn((
         Sprite {
@@ -39,5 +39,44 @@ pub fn playground_setup(mut commands: Commands,
     }
 
     // 加载玩家等级对应的字符
-    game_letters.candidate_letters = game_settings.level_letters[game_player.0.level as usize - 1].clone();
+    game_letters.candidate_letters = game_settings.level_letters[game_player.player.level as usize - 1].clone();
+
+    // 计算玩家的安全距离
+    game_player.safe_position = -(window.width() / 2. - FIGHTER_JET_MARGIN - FIGHTER_JET_SIZE * FIGHTER_JET_SCALE - 100.);
+}
+
+pub fn move_fly_unit(
+    mut commands: Commands,
+    mut query: Query<(Entity, &FlyingUnit, &mut Transform)>,
+    mut game_routes: ResMut<GameRoutes>,
+    mut game_letters: ResMut<GameLetters>,
+    game_player: Res<GamePlayer>,
+    time: Res<Time>,
+) {
+    for (entity, unit, mut transform) in &mut query {
+        // 沿着 -X 方向移动
+        transform.translation.x -= unit.speed * time.delta_secs();
+
+        // 到达销毁边界时，移除整个实体
+        if transform.translation.x < game_player.safe_position {
+            if let Some(pos) = game_routes.used_routes.iter().position(|r| r.id == unit.route) {
+                // 如果只包含这一个 Entity，则移除整个 Route
+                if game_routes.used_routes[pos].entities.len() == 1
+                    && game_routes.used_routes[pos].entities[0] == entity {
+                    let mut route = game_routes.used_routes[pos].clone();
+                    route.entities.clear();
+                    game_routes.empty_routes.push(route);
+                    game_routes.used_routes.remove(pos);
+                } else {
+                    // 否则仅移除目标 Entity
+                    game_routes.used_routes[pos].entities.retain(|&e| e != entity);
+                }
+            }
+
+            if !game_letters.candidate_letters.contains(&unit.letter) {
+                game_letters.candidate_letters.push(unit.letter);
+            }
+            commands.entity(entity).despawn();
+        }
+    }
 }

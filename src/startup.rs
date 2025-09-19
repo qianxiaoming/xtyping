@@ -169,7 +169,7 @@ fn player_list_setup(builder: &mut ChildSpawnerCommands, players: Res<Players>, 
     spawn_instructions(builder, "欢迎回来，选择你的账户以继续游戏", &fonts, 80.0);
     builder.spawn((
         Node {
-            width: Val::Px(700.),
+            width: Val::Px(780.),
             height: Val::Px(300.),
             border: UiRect::all(Val::Px(2.)),
             margin: UiRect::top(Val::Px(15.)),
@@ -308,7 +308,10 @@ fn on_player_selected(
     if let Some(event) = reader.read().last()
         && query.get(event.entity).is_ok() {
         info!("Player {} selected to continue game", event.value);
-        commands.insert_resource(GamePlayer(players.get(&event.value).clone()));
+        commands.insert_resource(GamePlayer{
+            player: players.get(&event.value).clone(),
+            ..default()
+        });
         next_state.set(GameState::Active)
     }
 }

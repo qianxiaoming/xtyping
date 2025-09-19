@@ -12,11 +12,14 @@ use crate::{GamePlayer, GameRoutes, GameLetters, GameFonts, GameState, PlayState
 use crate::{DEFAULT_ROUTE_HEIGHT, GAME_INFO_AREA_HEIGHT, GAME_INFO_AREA_MARGIN, MAX_ROUTE_COUNT};
 use crate::ui::*;
 use common::*;
+use crate::active::spawn::{AircraftSpawnState, BombSpawnState};
 
 pub fn play_game_plugin(app: &mut App) {
     app
         .init_resource::<GameRoutes>()
         .init_resource::<GameLetters>()
+        .init_resource::<AircraftSpawnState>()
+        .init_resource::<BombSpawnState>()
         .add_systems(OnEnter(GameState::Active), playing_game_setup)
         .add_systems(OnEnter(PlayState::Splash), splash::game_splash_setup)
         .add_systems(OnEnter(PlayState::Playing), playing::playground_setup)
@@ -25,7 +28,7 @@ pub fn play_game_plugin(app: &mut App) {
             .and(in_state(GameState::Active))))
         .add_systems(Update, (move_space_stars, twinkle_space_stars).run_if(in_state(GameState::Active)))
         .add_systems(Update, splash::fade_tip_messages.run_if(in_state(PlayState::Splash)))
-        .add_systems(Update, spawn::spawn_aircraft.run_if(in_state(PlayState::Playing)));
+        .add_systems(Update, (spawn::spawn_aircraft, spawn::spawn_bomb, playing::move_fly_unit).run_if(in_state(PlayState::Playing)));
 }
 
 fn playing_game_setup(mut commands: Commands, 
@@ -33,7 +36,9 @@ fn playing_game_setup(mut commands: Commands,
                       fonts: Res<GameFonts>, 
                       asset_server: Res<AssetServer>, 
                       time: Res<Time>, 
-                      window: Single<&Window>, 
+                      window: Single<&Window>,
+                      mut aircraft_spawn_state: ResMut<AircraftSpawnState>,
+                      mut bomb_spawn_state: ResMut<BombSpawnState>,
                       mut next_state: ResMut<NextState<PlayState>>) {
     commands.spawn((
         DespawnOnExit(GameState::Active),
@@ -77,7 +82,7 @@ fn playing_game_setup(mut commands: Commands,
                 },
             )
             .with_children(|builder| {
-                let player = &game_player.0;
+                let player = &game_player.player;
                 // 用户头像及升级进度条
                 builder.spawn(
                         Node {
@@ -121,7 +126,7 @@ fn playing_game_setup(mut commands: Commands,
                         });
                     });
                 // 用户名称
-                spawn_info_text(builder, &game_player.0.name, INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
+                spawn_info_text(builder, &game_player.player.name, INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
                 // 用户等级
                 spawn_marked_image(builder, LevelStarImage, &asset_server, &format!("images/star-{}.png", player.level),
                                  Vec2::new(24.*(player.level as f32), 24.), 0., 0.);
@@ -206,8 +211,11 @@ fn playing_game_setup(mut commands: Commands,
             spawn_health_bar(builder, HealthBar(false), 100, 4);
         });
     });
-
     spawn_space_stars(&mut commands, &asset_server, window);
+
+    *aircraft_spawn_state = AircraftSpawnState::default();
+    *bomb_spawn_state = BombSpawnState::default();
+
     next_state.set(PlayState::Splash);
 }
 
@@ -351,6 +359,7 @@ fn on_window_resized(
     mut resize_events: MessageReader<WindowResized>,
     mut commands: Commands,
     mut game_routes: ResMut<GameRoutes>,
+    mut game_player: ResMut<GamePlayer>,
     asset_server: Res<AssetServer>,
     stars: Query<Entity, With<SpaceStar>>,
     mut fighter_jet: Single<&mut Transform, With<FighterJet>>,
@@ -371,6 +380,8 @@ fn on_window_resized(
                 })
             }
         }
+
+        game_player.safe_position = -(window.width() / 2. - FIGHTER_JET_MARGIN - FIGHTER_JET_SIZE * FIGHTER_JET_SCALE - 100.);
 
         // 重新生成星空
         for entity in &stars {

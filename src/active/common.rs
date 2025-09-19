@@ -54,10 +54,14 @@ pub struct FighterJet;
 
 pub const FIGHTER_JET_MARGIN: f32 = 80.0;
 pub const FIGHTER_JET_SCALE: f32 = 0.3;
+pub const FIGHTER_JET_SIZE: f32 = 300.;
+
+pub const TARGET_LETTER_SIZE: f32 = 88.;
 
 #[derive(Component)]
 pub struct FlyingUnit {
     pub route: i32,
+    pub letter: char,
     pub speed: f32,
 }
 

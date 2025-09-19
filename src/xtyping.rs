@@ -112,7 +112,10 @@ impl Route {
 }
 
 #[derive(Resource, Default)]
-struct GamePlayer(pub Player);
+struct GamePlayer{
+    pub player: Player,
+    pub safe_position: f32
+}
 
 #[derive(Resource, Default)]
 struct GameRoutes {
@@ -128,14 +131,16 @@ struct GameLetters {
 
 #[derive(Resource)]
 struct GameSettings {
+    // 不同用户级别对应的字母
+    pub level_letters: Vec<Vec<char>>,
     // 敌机出现的时间间隔
     pub aircraft_intervals: Vec<(f32, f32)>,
     // 敌机的飞行速度区间
     pub aircraft_speeds: Vec<(f32, f32)>,
     // 敌机的开火距离
     pub firing_distance: f32,
-    // 级别对应的字母
-    pub level_letters: Vec<Vec<char>>,
+    // 炸弹出现的时间间隔
+    pub bomb_intervals: Vec<(f32, f32)>,
 }
 
 impl Default for GameSettings {
@@ -161,10 +166,11 @@ impl Default for GameSettings {
         }
 
         GameSettings {
-            aircraft_intervals: vec![(3., 8.),(2.5, 5.),(2., 4.),(1., 2.),(0.3, 1.2)],
-            aircraft_speeds: vec![(20., 30.),(20., 40.),(35., 60.),(60., 80.),(80., 100.)],
+            level_letters,
+            aircraft_intervals: vec![(5., 8.),(4., 6.),(2., 4.),(1., 2.),(0.3, 1.2)],
+            aircraft_speeds: vec![(15., 30.),(40., 80.),(80., 120.),(120., 150.),(150., 200.)],
             firing_distance: 200.,
-            level_letters
+            bomb_intervals: vec![(30., 50.),(40., 50.),(50., 80.),(60., 90.),(90., 150.)]
         }
     }
 }

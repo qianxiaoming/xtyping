@@ -1,11 +1,12 @@
 use bevy::asset::AssetServer;
 use bevy::color::Color;
+use bevy::color::palettes::css::RED;
 use bevy::input::keyboard::Key;
 use bevy::math::Vec3;
 use bevy::prelude::*;
-use crate::{GameRoutes, GameLetters, GameSettings, Route, GamePlayer};
-use crate::active::common::*;
-use crate::active::compute_route_count;
+use crate::{GameRoutes, GameLetters, GameSettings, Route, GamePlayer, GameFonts, PlayState};
+use crate::gaming::common::*;
+use crate::gaming::compute_route_count;
 
 pub fn playground_setup(mut commands: Commands,
                         mut game_routes: ResMut<GameRoutes>,
@@ -51,6 +52,7 @@ pub fn move_fly_unit(
     mut query: Query<(Entity, &FlyingUnit, &mut Transform)>,
     mut game_routes: ResMut<GameRoutes>,
     mut game_letters: ResMut<GameLetters>,
+    game_fonts: Res<GameFonts>,
     game_player: Res<GamePlayer>,
     time: Res<Time>,
 ) {
@@ -61,13 +63,12 @@ pub fn move_fly_unit(
         // 到达销毁边界时，移除整个实体
         if transform.translation.x < game_player.safe_position {
             if let Some(pos) = game_routes.used_routes.iter().position(|r| r.id == unit.route) {
-                // 如果只包含这一个 Entity，则移除整个 Route
+                // 如果只包含这一个 Entity，则将Route转移到未使用队列
                 if game_routes.used_routes[pos].entities.len() == 1
                     && game_routes.used_routes[pos].entities[0] == entity {
-                    let mut route = game_routes.used_routes[pos].clone();
+                    let mut route = game_routes.used_routes.swap_remove(pos);
                     route.entities.clear();
                     game_routes.empty_routes.push(route);
-                    game_routes.used_routes.remove(pos);
                 } else {
                     // 否则仅移除目标 Entity
                     game_routes.used_routes[pos].entities.retain(|&e| e != entity);
@@ -78,6 +79,32 @@ pub fn move_fly_unit(
                 game_letters.candidate_letters.push(unit.letter);
             }
             commands.entity(entity).despawn();
+
+            // 生成Miss文字动画
+            commands.spawn((
+                Text2d::new("MISS"),
+                TextFont {
+                    font: game_fonts.normal_font.clone(),
+                    font_size: 24.,
+                    ..Default::default()
+                },
+                TextColor(Color::srgb_u8(255, 100, 100)),
+                Transform::from_translation(transform.translation),
+                MissText(Timer::from_seconds(1., TimerMode::Once))
+                ));
         }
+    }
+}
+
+pub fn animate_miss_text(
+    time: Res<Time>,
+    mut query: Query<(&mut TextColor, &mut Transform, &mut MissText), With<MissText>>
+) {
+    for (mut color, mut transform, mut miss) in &mut query {
+        miss.0.tick(time.delta());
+        let t = miss.0.elapsed_secs();
+        let alpha= if 1. - t < 0. { 0. } else { 1. - t };
+        color.set_alpha(alpha);
+        transform.translation.y += time.delta_secs() * 30.0;
     }
 }

@@ -5,7 +5,7 @@ use bevy::color::Color;
 use bevy::math::Vec3;
 use bevy::prelude::*;
 use crate::{GamePlayer, GameRoutes, GameLetters, GameSettings, GameFonts, Route};
-use crate::active::common::*;
+use crate::gaming::common::*;
 
 fn random_route<'a>(game_data: &'a mut GameRoutes, rng: &mut impl Rng) -> &'a mut Route {
     if game_data.empty_routes.is_empty() {

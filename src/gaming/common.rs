@@ -85,3 +85,6 @@ pub struct HealthPack;
 
 #[derive(Component, Default)]
 pub struct Shield;
+
+#[derive(Component)]
+pub struct MissText(pub Timer);

@@ -3,7 +3,7 @@ use bevy::color::Color;
 use bevy::math::Vec2;
 use bevy::prelude::*;
 use crate::{GameFonts, PlayState};
-use crate::active::common::SplashTextRow;
+use crate::gaming::common::SplashTextRow;
 use crate::ui::{spawn_image_node, spawn_info_text};
 
 pub fn game_splash_setup(mut commands: Commands,
@@ -81,17 +81,17 @@ pub fn fade_tip_messages(
     for (mut fade, children) in &mut query {
         fade.timer.tick(time.delta());
         let t = fade.timer.elapsed_secs();
-        let (alpha, finished) = if t < 1. {
+        let alpha= if t < 1. {
             // 淡入
-            (t / 1., false)
+            t / 1.
         } else if t < 3. {
             // 保持
-            (1.0, false)
+            1.0
         } else if t < 4.0 {
             // 淡出
-            (1.0 - (t - 3.) / 1., false)
+            1.0 - (t - 3.) / 1.
         } else {
-            (0.0, true)
+            0.0
         };
 
         for child in children.iter() {
@@ -103,7 +103,7 @@ pub fn fade_tip_messages(
             }
         }
 
-        if finished {
+        if fade.timer.is_finished() {
             next_state.set(PlayState::Playing);
         }
     }

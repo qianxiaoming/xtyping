@@ -12,7 +12,7 @@ use crate::{GamePlayer, GameRoutes, GameLetters, GameFonts, GameState, PlayState
 use crate::{DEFAULT_ROUTE_HEIGHT, GAME_INFO_AREA_HEIGHT, GAME_INFO_AREA_MARGIN, MAX_ROUTE_COUNT};
 use crate::ui::*;
 use common::*;
-use crate::active::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState};
+use crate::gaming::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState};
 
 pub fn play_game_plugin(app: &mut App) {
     app
@@ -22,19 +22,20 @@ pub fn play_game_plugin(app: &mut App) {
         .init_resource::<BombSpawnState>()
         .init_resource::<ShieldSpawnState>()
         .init_resource::<HealthPackSpawnState>()
-        .add_systems(OnEnter(GameState::Active), playing_game_setup)
+        .add_systems(OnEnter(GameState::Gaming), playing_game_setup)
         .add_systems(OnEnter(PlayState::Splash), splash::game_splash_setup)
         .add_systems(OnEnter(PlayState::Playing), playing::playground_setup)
         .add_systems(Update, update_game_time)
         .add_systems(Update, on_window_resized.run_if(on_message::<WindowResized>
-            .and(in_state(GameState::Active))))
-        .add_systems(Update, (move_space_stars, twinkle_space_stars).run_if(in_state(GameState::Active)))
+            .and(in_state(GameState::Gaming))))
+        .add_systems(Update, (move_space_stars, twinkle_space_stars).run_if(in_state(GameState::Gaming)))
         .add_systems(Update, splash::fade_tip_messages.run_if(in_state(PlayState::Splash)))
         .add_systems(Update, (spawn::spawn_aircraft,
                               spawn::spawn_equipment::<BombSpawnState, Bomb>,
                               spawn::spawn_equipment::<ShieldSpawnState, Shield>,
                               spawn::spawn_equipment::<HealthPackSpawnState, HealthPack>,
-                              playing::move_fly_unit).run_if(in_state(PlayState::Playing)));
+                              playing::move_fly_unit,
+                              playing::animate_miss_text).run_if(in_state(PlayState::Playing)));
 }
 
 fn playing_game_setup(mut commands: Commands, 
@@ -50,7 +51,7 @@ fn playing_game_setup(mut commands: Commands,
                       mut health_pack_spawn_state: ResMut<HealthPackSpawnState>,
                       mut next_state: ResMut<NextState<PlayState>>) {
     commands.spawn((
-        DespawnOnExit(GameState::Active),
+        DespawnOnExit(GameState::Gaming),
         Node {
             width: Val::Percent(100.),
             height: Val::Px(GAME_INFO_AREA_HEIGHT),
@@ -365,12 +366,10 @@ pub fn update_game_time(
 
         if total_seconds != clock.last_second {
             clock.last_second = total_seconds;
-
-            let h = total_seconds / 3600;
-            let m = (total_seconds % 3600) / 60;
-            let s = total_seconds % 60;
-
-            *text = Text::new(format!("{:02}:{:02}:{:02}", h, m, s));
+            *text = Text::new(format!("{:02}:{:02}:{:02}",
+                                      total_seconds / 3600,
+                                      (total_seconds % 3600) / 60,
+                                      total_seconds % 60));
         }
     }
 }

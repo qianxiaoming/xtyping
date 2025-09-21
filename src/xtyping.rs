@@ -3,7 +3,7 @@
 mod startup;
 mod widgets;
 mod register;
-mod active;
+mod gaming;
 mod ui;
 
 use bevy::prelude::*;
@@ -35,7 +35,7 @@ fn main() {
         .add_plugins((
             startup::startup_plugin,
             register::new_player_plugin,
-            active::play_game_plugin,
+            gaming::play_game_plugin,
             widgets::widgets_plugin
         ))
         .run();
@@ -47,12 +47,12 @@ enum GameState {
     Init,
     Startup,
     Register,
-    Active
+    Gaming
 }
 
 /// 玩游戏过程中的可能状态
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, SubStates)]
-#[source(GameState = GameState::Active)]
+#[source(GameState = GameState::Gaming)]
 #[states(scoped_entities)]
 enum PlayState {
     #[default]
@@ -175,8 +175,8 @@ impl Default for GameSettings {
             aircraft_intervals: vec![(5., 8.),(4., 6.),(2., 4.),(1., 2.),(0.3, 1.2)],
             firing_distance: 200.,
             bomb_intervals: vec![(60., 90.),(90., 120.),(120., 150.),(150., 300.),(300., 500.)],
-            shield_intervals: vec![(80., 100.),(100., 150.),(150., 250.),(250., 300.),(300., 350.)],
-            health_pack_intervals: vec![(120., 180.),(200., 250.),(300., 350.),(400., 450.),(500., 600.)],
+            shield_intervals: vec![(100., 150.),(150., 200.),(200., 250.),(250., 300.),(300., 350.)],
+            health_pack_intervals: vec![(200., 300.),(300., 400.),(400., 500.),(500., 600.),(600., 700.)],
         }
     }
 }

@@ -312,6 +312,6 @@ fn on_player_selected(
             player: players.get(&event.value).clone(),
             ..default()
         });
-        next_state.set(GameState::Active)
+        next_state.set(GameState::Gaming)
     }
 }

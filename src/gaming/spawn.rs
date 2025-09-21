@@ -74,6 +74,7 @@ pub fn spawn_aircraft(mut commands: Commands,
                 route: route.id,
                 letter,
                 speed: rng.random_range(speed.0..=speed.1),
+                kind: UnitKind::FighterJet
             },
             Aircraft,
             children![(
@@ -161,9 +162,9 @@ impl AsMut<SpawnState> for HealthPackSpawnState {
     }
 }
 
-pub fn spawn_equipment<State: Resource, Marker: Default+Component>(
+pub fn spawn_equipment<Marker: Default+Component+FlyingUnitTrait>(
     mut commands: Commands,
-    mut spawn_state: ResMut<State>,
+    mut spawn_state: ResMut<Marker::SpawnState>,
     mut game_routes: ResMut<GameRoutes>,
     mut game_letters: ResMut<GameLetters>,
     game_player: Res<GamePlayer>,
@@ -173,7 +174,7 @@ pub fn spawn_equipment<State: Resource, Marker: Default+Component>(
     window: Single<&Window>
 )
 where
-    State: AsMut<SpawnState>
+    Marker::SpawnState: AsMut<SpawnState> + Resource
 {
     let state = spawn_state.as_mut().as_mut();
     if state.timer.tick(time.delta()).just_finished() {
@@ -200,6 +201,7 @@ where
                     route: route.id,
                     letter,
                     speed: rng.random_range(speed.0..=speed.1),
+                    kind: Marker::kind(),
                 },
                 Marker::default(),
                 children![(

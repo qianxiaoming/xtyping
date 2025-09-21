@@ -1,7 +1,7 @@
 use bevy::asset::AssetServer;
 use bevy::color::Color;
 use bevy::color::palettes::css::RED;
-use bevy::input::keyboard::Key;
+use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::math::Vec3;
 use bevy::prelude::*;
 use crate::{GameRoutes, GameLetters, GameSettings, Route, GamePlayer, GameFonts, PlayState};
@@ -106,5 +106,41 @@ pub fn animate_miss_text(
         let alpha= if 1. - t < 0. { 0. } else { 1. - t };
         color.set_alpha(alpha);
         transform.translation.y += time.delta_secs() * 30.0;
+    }
+}
+
+pub fn on_player_char_input(
+    mut commands: Commands,
+    mut keyboard_inputs: MessageReader<KeyboardInput>,
+    mut query: Query<(Entity, &FlyingUnit, &mut Transform)>,
+    asset_server: Res<AssetServer>,
+    window: Single<&Window>
+) {
+    for event in keyboard_inputs.read() {
+        if !event.state.is_pressed() {
+            continue;
+        }
+        if let Key::Character(character) = &event.logical_key
+            && let Some(c) = character.chars().next() {
+            // 找到玩家输入字符对应的飞行单元（可能多个）
+            let missile = asset_server.load("images/missile.png");
+            let missile_pos = FIGHTER_JET_MARGIN - window.width()/2. + FIGHTER_JET_SIZE*FIGHTER_JET_SCALE/2.;
+            for (entity, unit, mut transform) in &mut query {
+                if unit.letter != c.to_ascii_uppercase() {
+                    continue;
+                }
+                commands.spawn((
+                    Sprite {
+                        image: missile.clone(),
+                        image_mode: SpriteImageMode::Auto,
+                        color: Color::WHITE,
+                        ..default()
+                    },
+                    Transform::from_translation(Vec3::new(missile_pos, -20., 0.))
+                        .with_scale(Vec3::splat(FIGHTER_JET_SCALE)),
+                    Missile,
+                ));
+            }
+        }
     }
 }

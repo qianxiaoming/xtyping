@@ -1,5 +1,6 @@
 use bevy::color::Color;
 use bevy::prelude::{Component, Timer};
+use crate::gaming::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState};
 
 /// 游戏时间显示
 #[derive(Component)]
@@ -59,32 +60,65 @@ pub const FIGHTER_JET_SIZE: f32 = 300.;
 pub const TARGET_LETTER_SIZE: f32 = 88.;
 pub const TARGET_LETTER_COLOR: Color = Color::srgb_u8(88, 251, 254);
 
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub enum UnitKind {
+    FighterJet,
+    Aircraft,
+    Bomb,
+    Shield,
+    HealthPack
+}
+
+pub trait FlyingUnitTrait {
+    type SpawnState;
+    fn kind() -> UnitKind;
+}
+
 #[derive(Component)]
 pub struct FlyingUnit {
     pub route: i32,
     pub letter: char,
     pub speed: f32,
+    pub kind: UnitKind,
 }
 
 #[derive(Component)]
 pub struct Aircraft;
 
+impl FlyingUnitTrait for Aircraft {
+    type SpawnState = AircraftSpawnState;
+    fn kind() -> UnitKind { UnitKind::Aircraft }
+}
+
 pub const AIRCRAFT_KIND: i32 = 3;
 pub const AIRCRAFT_SIZE: f32 = 300.;
-// pub const AIRCRAFT_COLORS: [Color; 3] = [
-//     Color::srgb_u8(66, 201, 36),
-//     Color::srgb_u8(220, 31, 11),
-//     Color::srgb_u8(255, 222, 0)
-// ];
 
 #[derive(Component, Default)]
 pub struct Bomb;
 
+impl FlyingUnitTrait for Bomb {
+    type SpawnState = BombSpawnState;
+    fn kind() -> UnitKind { UnitKind::Bomb }
+}
+
 #[derive(Component, Default)]
 pub struct HealthPack;
+
+impl FlyingUnitTrait for HealthPack {
+    type SpawnState = HealthPackSpawnState;
+    fn kind() -> UnitKind { UnitKind::HealthPack }
+}
 
 #[derive(Component, Default)]
 pub struct Shield;
 
+impl FlyingUnitTrait for Shield {
+    type SpawnState = ShieldSpawnState;
+    fn kind() -> UnitKind { UnitKind::Shield }
+}
+
 #[derive(Component)]
 pub struct MissText(pub Timer);
+
+#[derive(Component)]
+pub struct Missile;

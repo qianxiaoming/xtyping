@@ -31,11 +31,12 @@ pub fn play_game_plugin(app: &mut App) {
         .add_systems(Update, (move_space_stars, twinkle_space_stars).run_if(in_state(GameState::Gaming)))
         .add_systems(Update, splash::fade_tip_messages.run_if(in_state(PlayState::Splash)))
         .add_systems(Update, (spawn::spawn_aircraft,
-                              spawn::spawn_equipment::<BombSpawnState, Bomb>,
-                              spawn::spawn_equipment::<ShieldSpawnState, Shield>,
-                              spawn::spawn_equipment::<HealthPackSpawnState, HealthPack>,
+                              spawn::spawn_equipment::<Bomb>,
+                              spawn::spawn_equipment::<Shield>,
+                              spawn::spawn_equipment::<HealthPack>,
                               playing::move_fly_unit,
-                              playing::animate_miss_text).run_if(in_state(PlayState::Playing)));
+                              playing::animate_miss_text,
+                              playing::on_player_char_input).run_if(in_state(PlayState::Playing)));
 }
 
 fn playing_game_setup(mut commands: Commands, 
@@ -230,18 +231,21 @@ fn playing_game_setup(mut commands: Commands,
     let state = &mut bomb_spawn_state.as_mut().0;
     state.speeds = game_settings.level_speeds.clone();
     state.intervals = game_settings.bomb_intervals.clone();
+    state.spawn = true;
 
     // 初始化护盾的生成参数
     *shield_spawn_state = ShieldSpawnState::default();
     let state = &mut shield_spawn_state.as_mut().0;
     state.speeds = game_settings.level_speeds.clone();
     state.intervals = game_settings.shield_intervals.clone();
+    state.spawn = true;
 
     // 初始化血包的生成参数
     *health_pack_spawn_state = HealthPackSpawnState::default();
     let state = &mut health_pack_spawn_state.as_mut().0;
     state.speeds = game_settings.level_speeds.clone();
     state.intervals = game_settings.health_pack_intervals.clone();
+    state.spawn = true;
 
     next_state.set(PlayState::Splash);
 }

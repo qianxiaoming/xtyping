@@ -7,7 +7,6 @@ mod gaming;
 mod ui;
 
 use bevy::prelude::*;
-use bevy::dev_tools::states::*;
 use bevy::input_focus::InputFocus;
 use bevy::window::WindowPlugin;
 use serde::{Deserialize, Serialize};
@@ -30,6 +29,7 @@ fn main() {
         .init_resource::<GameSettings>()
         .init_resource::<GameFonts>()
         .init_resource::<Players>()
+        .init_resource::<ExplosionTexture>()
         .add_systems(OnEnter(GameState::Init), init_resources)
         .add_systems(Startup, setup_camera)
         .add_plugins((
@@ -129,6 +129,12 @@ struct GameLetters {
     pub choosed_letters: Vec<char>
 }
 
+#[derive(Resource, Default)]
+struct ExplosionTexture {
+    pub texture: Handle<Image>,
+    pub layout: Handle<TextureAtlasLayout>
+}
+
 #[derive(Resource)]
 struct GameSettings {
     // 不同用户级别对应的字母
@@ -145,6 +151,8 @@ struct GameSettings {
     pub shield_intervals: Vec<(f32, f32)>,
     // 血包出现的时间间隔
     pub health_pack_intervals: Vec<(f32, f32)>,
+    // 玩家发射的导弹速度
+    pub missile_speed: f32,
 }
 
 impl Default for GameSettings {
@@ -172,11 +180,12 @@ impl Default for GameSettings {
         GameSettings {
             level_letters,
             level_speeds: vec![(15., 30.),(40., 80.),(80., 120.),(120., 150.),(150., 200.)],
-            aircraft_intervals: vec![(5., 8.),(4., 6.),(2., 4.),(1., 2.),(0.3, 1.2)],
+            aircraft_intervals: vec![(4., 8.),(3., 5.),(1.5, 2.5),(0.8, 1.5),(0.3, 1.2)],
             firing_distance: 200.,
             bomb_intervals: vec![(60., 90.),(90., 120.),(120., 150.),(150., 300.),(300., 500.)],
             shield_intervals: vec![(100., 150.),(150., 200.),(200., 250.),(250., 300.),(300., 350.)],
             health_pack_intervals: vec![(200., 300.),(300., 400.),(400., 500.),(500., 600.),(600., 700.)],
+            missile_speed: 1000.
         }
     }
 }
@@ -190,7 +199,9 @@ fn init_resources(
     mut players: ResMut<Players>,
     mut fonts: ResMut<GameFonts>,
     mut next: ResMut<NextState<GameState>>,
-    asset_server: Res<AssetServer>
+    mut texture: ResMut<ExplosionTexture>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    asset_server: Res<AssetServer>,
 ) {
     fonts.title_font = asset_server.load("fonts/sharphei.ttf");
     fonts.normal_font = asset_server.load("fonts/happyfont.ttf");
@@ -200,6 +211,11 @@ fn init_resources(
 
     widgets::UI_BUTTON_FONT.set(fonts.ui_font.clone()).ok();
 
+    texture.texture = asset_server.load("images/explosion.png");
+    texture.layout = texture_atlas_layouts.add(
+        TextureAtlasLayout::from_grid(UVec2::new(150, 129), 3, 3, None, None)
+    );
+
     if std::path::Path::new(PLAYERS_DATA_FILE).exists() {
         std::fs::read_to_string(PLAYERS_DATA_FILE)
             .and_then(|data| serde_json::from_str::<Vec<Player>>(&data).map_err(|err| err.into()))
@@ -208,5 +224,6 @@ fn init_resources(
     } else {
         info!("No player data file found in current directory");
     }
+
     next.set(GameState::Startup);
 }

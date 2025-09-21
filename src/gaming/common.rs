@@ -1,5 +1,5 @@
 use bevy::color::Color;
-use bevy::prelude::{Component, Timer};
+use bevy::prelude::{Component, Deref, DerefMut, Entity, Timer};
 use crate::gaming::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState};
 
 /// 游戏时间显示
@@ -28,20 +28,23 @@ pub struct HealthBar(pub bool);
 pub const HEALTH_BAR_LEN: u16 = 100;
 
 /// 敌方数量统计文本
-#[derive(Component)]
-pub struct EnemyCounter;
+#[derive(Component, Default)]
+pub struct AircraftCounter {
+    pub hit: usize,
+    pub miss: usize,
+}
 
 /// 炸弹数量统计文本
-#[derive(Component)]
-pub struct BombCounter;
+#[derive(Component, Default)]
+pub struct BombCounter(pub usize);
 
 /// 血包数量统计文本
-#[derive(Component)]
-pub struct HealthPackCounter;
+#[derive(Component, Default)]
+pub struct HealthPackCounter(pub usize);
 
 /// 护盾数量统计文本
-#[derive(Component)]
-pub struct ShieldCounter;
+#[derive(Component, Default)]
+pub struct ShieldCounter(pub usize);
 
 /// Splash动画元素
 #[derive(Component)]
@@ -62,7 +65,6 @@ pub const TARGET_LETTER_COLOR: Color = Color::srgb_u8(88, 251, 254);
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum UnitKind {
-    FighterJet,
     Aircraft,
     Bomb,
     Shield,
@@ -120,5 +122,22 @@ impl FlyingUnitTrait for Shield {
 #[derive(Component)]
 pub struct MissText(pub Timer);
 
+/// 玩家发射的导弹
 #[derive(Component)]
-pub struct Missile;
+pub struct Missile {
+    pub speed: f32,
+    pub target: Entity,
+    pub kind: UnitKind
+}
+
+/// 敌机发射的火焰武器
+#[derive(Component)]
+pub struct Flame {
+    pub speed: f32,
+    pub target: Entity,
+}
+
+#[derive(Component, Deref, DerefMut)]
+pub struct Explosion(pub Timer);
+
+pub const EXPLOSION_SHEET_MAX_INDEX: usize = 8;

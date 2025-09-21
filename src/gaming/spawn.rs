@@ -1,5 +1,4 @@
 use rand::Rng;
-use serde::Deserialize;
 use bevy::asset::AssetServer;
 use bevy::color::Color;
 use bevy::math::Vec3;
@@ -74,7 +73,7 @@ pub fn spawn_aircraft(mut commands: Commands,
                 route: route.id,
                 letter,
                 speed: rng.random_range(speed.0..=speed.1),
-                kind: UnitKind::FighterJet
+                kind: UnitKind::Aircraft
             },
             Aircraft,
             children![(

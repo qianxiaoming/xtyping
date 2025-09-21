@@ -36,7 +36,10 @@ pub fn play_game_plugin(app: &mut App) {
                               spawn::spawn_equipment::<HealthPack>,
                               playing::move_fly_unit,
                               playing::animate_miss_text,
-                              playing::on_player_char_input).run_if(in_state(PlayState::Playing)));
+                              playing::on_player_char_input,
+                              playing::update_player_missiles, 
+                              playing::update_player_score,
+                              playing::animate_explosion_sheet).run_if(in_state(PlayState::Playing)));
 }
 
 fn playing_game_setup(mut commands: Commands, 
@@ -188,7 +191,7 @@ fn playing_game_setup(mut commands: Commands,
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 grid_template_columns: vec![
-                    GridTrack::flex(1.5),
+                    GridTrack::flex(1.2),
                     GridTrack::flex(1.),
                     GridTrack::flex(1.),
                     GridTrack::flex(1.),
@@ -204,19 +207,19 @@ fn playing_game_setup(mut commands: Commands,
         ).with_children(|builder| {
             builder.spawn(Node::default()).with_children(|builder| {
                 spawn_image_node(builder, &asset_server, "images/fighter-jet.png", Vec2::splat(30.), 2., 4.);
-                spawn_marked_text(builder, EnemyCounter, "0/0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
+                spawn_marked_text(builder, AircraftCounter::default(), "0/0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
             });
             builder.spawn(Node::default()).with_children(|builder| {
                 spawn_image_node(builder, &asset_server, "images/bomb.png", Vec2::splat(30.), 2., 4.);
-                spawn_marked_text(builder, BombCounter, "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
+                spawn_marked_text(builder, BombCounter::default(), "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
             });
             builder.spawn(Node::default()).with_children(|builder| {
                 spawn_image_node(builder, &asset_server, "images/first-aid-kit.png", Vec2::splat(30.), 2., 4.);
-                spawn_marked_text(builder, HealthPackCounter, "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
+                spawn_marked_text(builder, HealthPackCounter::default(), "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
             });
             builder.spawn(Node::default()).with_children(|builder| {
                 spawn_image_node(builder, &asset_server, "images/shield.png", Vec2::splat(30.), 2., 4.);
-                spawn_marked_text(builder, ShieldCounter, "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
+                spawn_marked_text(builder, ShieldCounter::default(), "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
             });
             // 敌方血条
             spawn_health_bar(builder, HealthBar(false), 100, 4);
@@ -231,21 +234,21 @@ fn playing_game_setup(mut commands: Commands,
     let state = &mut bomb_spawn_state.as_mut().0;
     state.speeds = game_settings.level_speeds.clone();
     state.intervals = game_settings.bomb_intervals.clone();
-    state.spawn = true;
+    state.spawn =true;
 
     // 初始化护盾的生成参数
     *shield_spawn_state = ShieldSpawnState::default();
     let state = &mut shield_spawn_state.as_mut().0;
     state.speeds = game_settings.level_speeds.clone();
     state.intervals = game_settings.shield_intervals.clone();
-    state.spawn = true;
+    state.spawn =true;
 
     // 初始化血包的生成参数
     *health_pack_spawn_state = HealthPackSpawnState::default();
     let state = &mut health_pack_spawn_state.as_mut().0;
     state.speeds = game_settings.level_speeds.clone();
     state.intervals = game_settings.health_pack_intervals.clone();
-    state.spawn = true;
+    state.spawn =true;
 
     next_state.set(PlayState::Splash);
 }
@@ -394,7 +397,7 @@ fn on_window_resized(
     mut fighter_jet: Single<&mut Transform, With<FighterJet>>,
     window: Single<&Window>
 ) {
-    if let Some(e) = resize_events.read().last() {
+    if let Some(_) = resize_events.read().last() {
         // 调整玩家战斗机位置
         fighter_jet.translation.x = FIGHTER_JET_MARGIN - window.width()/2.;
 

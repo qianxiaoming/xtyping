@@ -1,6 +1,7 @@
 use bevy::color::Color;
 use bevy::prelude::{Component, Deref, DerefMut, Entity, Event, Resource, Timer};
-use crate::gaming::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState};
+use crate::gaming::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState, SpawnState};
+use crate::PlayState;
 
 /// 游戏时间显示
 #[derive(Component)]
@@ -21,11 +22,20 @@ pub struct LevelStarImage;
 #[derive(Component)]
 pub struct PlayerScore;
 
-/// 玩家/敌方的血条
-#[derive(Component)]
-pub struct HealthBar(pub bool);
+#[derive(PartialEq, Clone, Copy)]
+pub enum GameRole {
+    Player,
+    Enemy
+}
 
-pub const HEALTH_BAR_LEN: u16 = 100;
+/// 玩家/敌方的血条
+#[derive(Component, Clone)]
+pub struct HealthBar {
+    pub role: GameRole,
+    pub value: u16,
+}
+
+pub const HEALTH_MAX_VALUE: u16 = 100;
 
 #[derive(Resource, Default)]
 pub struct FlyingUnitCounter {
@@ -35,25 +45,6 @@ pub struct FlyingUnitCounter {
     pub shield: usize,
     pub health_pack: usize,
 }
-
-/// 敌方数量统计文本
-// #[derive(Component, Default)]
-// pub struct AircraftCounter {
-//     pub destroyed: usize,
-//     pub missed: usize,
-// }
-
-/// 炸弹数量统计文本
-// #[derive(Component, Default)]
-// pub struct BombCounter(pub usize);
-
-/// 血包数量统计文本
-// #[derive(Component, Default)]
-// pub struct HealthPackCounter(pub usize);
-
-/// 护盾数量统计文本
-// #[derive(Component, Default)]
-// pub struct ShieldCounter(pub usize);
 
 /// Splash动画元素
 #[derive(Component)]
@@ -127,6 +118,8 @@ impl FlyingUnitTrait for HealthPack {
     fn kind() -> FlyingUnitKind { FlyingUnitKind::HealthPack }
 }
 
+pub const HEALTH_PACK_RESTORE: u16 = 10;
+
 #[derive(Component, Default)]
 pub struct Shield;
 
@@ -159,3 +152,9 @@ pub const EXPLOSION_SHEET_MAX_INDEX: usize = 8;
 
 #[derive(Event)]
 pub struct BombExplodedEvent;
+
+#[derive(Event)]
+pub struct UpdateHealthBarEvent(pub u16);
+
+#[derive(Resource, Default)]
+pub struct LastPlayState(pub PlayState);

@@ -3,6 +3,7 @@ use bevy::app::AppExit;
 use super::*;
 use ui::*;
 use widgets;
+use crate::gaming::common::HEALTH_MAX_VALUE;
 use crate::widgets::{ListItem, ListView, TextConfig};
 
 pub fn startup_plugin(app: &mut App) {
@@ -308,8 +309,9 @@ fn on_player_selected(
     if let Some(event) = reader.read().last()
         && query.get(event.entity).is_ok() {
         info!("Player {} selected to continue game", event.value);
-        commands.insert_resource(GamePlayer{
+        commands.insert_resource(GamePlayer {
             player: players.get(&event.value).clone(),
+            health: HEALTH_MAX_VALUE,
             ..default()
         });
         next_state.set(GameState::Gaming)

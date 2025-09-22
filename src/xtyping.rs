@@ -112,9 +112,10 @@ impl Route {
 }
 
 #[derive(Resource, Default)]
-struct GamePlayer{
+struct GamePlayer {
     pub player: Player,
-    pub safe_position: f32
+    pub safe_position: f32,
+    pub health: u16,
 }
 
 #[derive(Resource, Default)]
@@ -185,7 +186,7 @@ impl Default for GameSettings {
             aircraft_count: vec![150, 200, 300, 400, 500],
             aircraft_intervals: vec![(4., 8.),(3., 5.),(1.2, 2.),(0.8, 1.5),(0.3, 1.2)],
             firing_distance: 200.,
-            bomb_intervals: vec![(60., 90.),(90., 120.),(120., 150.),(150., 300.),(300., 500.)],
+            bomb_intervals: vec![(100., 150.),(150., 200.),(200., 250.),(300., 400.),(400., 450.)],
             shield_intervals: vec![(100., 150.),(150., 200.),(200., 250.),(250., 300.),(300., 350.)],
             health_pack_intervals: vec![(200., 300.),(300., 400.),(400., 500.),(500., 600.),(600., 700.)],
             missile_speed: 1000.

@@ -4,17 +4,24 @@ use bevy::color::Color;
 use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::math::Vec3;
 use bevy::prelude::*;
-use crate::{GameRoutes, GameLetters, GameSettings, Route, GamePlayer, GameFonts, ExplosionTexture};
+use crate::{GameRoutes, GameLetters, GameSettings, Route, GamePlayer, GameFonts, ExplosionTexture, PlayState};
 use crate::gaming::common::*;
-use crate::gaming::compute_route_count;
+use crate::gaming::{compute_route_count, gradient_health_bar_color};
 
-pub fn playground_setup(mut commands: Commands,
-                        mut game_routes: ResMut<GameRoutes>,
-                        mut game_letters: ResMut<GameLetters>,
-                        mut game_player: ResMut<GamePlayer>,
-                        game_settings: Res<GameSettings>,
-                        asset_server: Res<AssetServer>,
-                        window: Single<&Window>) {
+pub fn playground_setup(
+    mut commands: Commands,
+    mut game_routes: ResMut<GameRoutes>,
+    mut game_letters: ResMut<GameLetters>,
+    mut game_player: ResMut<GamePlayer>,
+    game_settings: Res<GameSettings>,
+    asset_server: Res<AssetServer>,
+    window: Single<&Window>,
+    last_state: Option<Res<LastPlayState>>,
+) {
+    if last_state.is_some() {
+        commands.remove_resource::<LastPlayState>();
+        return;
+    }
     // 玩家的战斗机
     let fighter_jet_path = format!("images/fighter_jet_{}.png", game_player.player.level);
     let texture = asset_server.load(fighter_jet_path);
@@ -157,6 +164,15 @@ pub fn animate_miss_text(
     }
 }
 
+pub fn on_keyboard_input(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<PlayState>>
+) {
+    if keyboard_input.just_released(KeyCode::Space) {
+        next_state.set(PlayState::Paused);
+    }
+}
+
 pub fn on_player_char_input(
     mut commands: Commands,
     mut keyboard_inputs: MessageReader<KeyboardInput>,
@@ -198,12 +214,34 @@ pub fn on_player_char_input(
     }
 }
 
-pub fn update_player_score(
+pub fn update_player_status(
     player: ResMut<GamePlayer>,
+    mut health_bars: Query<(Entity, &mut HealthBar)>,
     mut score_text: Single<&mut Text, With<PlayerScore>>,
+    children_query: Query<&Children>,
+    mut color_query: Query<&mut BackgroundColor>
 ) {
-    if player.is_changed() {
-        **score_text = Text::new(format!("{}", player.player.score));
+    if !player.is_changed() {
+        return;
+    }
+    **score_text = Text::new(format!("{}", player.player.score));
+
+    for (entity, mut bar) in health_bars.iter_mut() {
+        if bar.role == GameRole::Player && bar.value != player.health {
+            if let Ok(children) = children_query.get(entity) {
+                for (index, child) in children.iter().enumerate() {
+                    let bg_color = if index < player.health as usize {
+                        gradient_health_bar_color(index as u16)
+                    } else {
+                        Color::srgb_u8(70,70,70)
+                    };
+                    if let Ok(mut color) = color_query.get_mut(child) {
+                        *color = BackgroundColor(bg_color);
+                    }
+                }
+            }
+            bar.value = player.health;
+        }
     }
 }
 
@@ -261,6 +299,8 @@ pub fn update_player_missiles(
                     if let Ok(ac) = aircraft.get(missile.target) && ac.flame.is_some() {
                         commands.entity(ac.flame.unwrap()).despawn();
                     }
+                    // 更新敌机的血条
+                    commands.trigger(UpdateHealthBarEvent(counter.destroyed as u16));
                 },
                 FlyingUnitKind::Bomb => {
                     counter.bomb += 1;
@@ -289,6 +329,7 @@ pub fn update_player_missiles(
                         }
                     ).unwrap();
                     *text = Text::new(format!("{}", counter.health_pack));
+                    player.health = (player.health + HEALTH_PACK_RESTORE).min(HEALTH_MAX_VALUE);
                 }
             }
 
@@ -329,6 +370,7 @@ pub fn animate_explosion_sheet(
 
 pub fn update_aircraft_flames(
     mut commands: Commands,
+    mut game_player: ResMut<GamePlayer>,
     mut flames: Query<(Entity, &Flame, &mut Transform), Without<FighterJet>>,
     time: Res<Time>,
     fighter_jet: Single<&Transform, With<FighterJet>>,
@@ -351,6 +393,9 @@ pub fn update_aircraft_flames(
         // 命中检测
         if current_pos.distance(target_pos) < 30.0 {
             commands.entity(flame_entity).despawn();
+            if game_player.health != 0 {
+                game_player.health -= 1;
+            }
         }
     }
 }
@@ -381,5 +426,35 @@ pub fn on_bomb_exploded(
                 kind: FlyingUnitKind::Aircraft,
             }
         ));
+    }
+}
+
+/// 用于更新敌方的血条
+pub fn on_update_health_bar(
+    event: On<UpdateHealthBarEvent>,
+    mut health_bars: Query<(Entity, &mut HealthBar)>,
+    game_settings: Res<GameSettings>,
+    player: Res<GamePlayer>,
+    children_query: Query<&Children>,
+    mut color_query: Query<&mut BackgroundColor>
+) {
+    let total = game_settings.aircraft_count[(player.player.level-1) as usize] as u16;
+    let health = ((total - event.0) as f32 / total as f32 * 100.).ceil() as u16;
+    for (entity, mut bar) in health_bars.iter_mut() {
+        if bar.role == GameRole::Enemy && bar.value != health {
+            if let Ok(children) = children_query.get(entity) {
+                for (index, child) in children.iter().enumerate() {
+                    let bg_color = if (HEALTH_MAX_VALUE - index as u16) <= health {
+                        gradient_health_bar_color(HEALTH_MAX_VALUE - index as u16)
+                    } else {
+                        Color::srgb_u8(70,70,70)
+                    };
+                    if let Ok(mut color) = color_query.get_mut(child) {
+                        *color = BackgroundColor(bg_color);
+                    }
+                }
+            }
+            bar.value = player.health;
+        }
     }
 }

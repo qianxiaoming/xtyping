@@ -2,6 +2,7 @@ pub mod common;
 mod playing;
 mod splash;
 mod spawn;
+mod paused;
 
 use rand::Rng;
 use bevy::app::App;
@@ -13,6 +14,7 @@ use crate::{DEFAULT_ROUTE_HEIGHT, GAME_INFO_AREA_HEIGHT, GAME_INFO_AREA_MARGIN, 
 use crate::ui::*;
 use common::*;
 use crate::gaming::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState};
+use crate::widgets::{input_box_handle_focus, InputBox};
 
 pub fn play_game_plugin(app: &mut App) {
     app
@@ -24,9 +26,11 @@ pub fn play_game_plugin(app: &mut App) {
         .init_resource::<HealthPackSpawnState>()
         .init_resource::<FlyingUnitCounter>()
         .add_observer(playing::on_bomb_exploded)
+        .add_observer(playing::on_update_health_bar)
         .add_systems(OnEnter(GameState::Gaming), playing_game_setup)
         .add_systems(OnEnter(PlayState::Splash), splash::game_splash_setup)
         .add_systems(OnEnter(PlayState::Playing), playing::playground_setup)
+        .add_systems(OnEnter(PlayState::Paused), paused::paused_setup)
         .add_systems(Update, update_game_time)
         .add_systems(Update, on_window_resized.run_if(on_message::<WindowResized>
             .and(in_state(GameState::Gaming))))
@@ -39,10 +43,12 @@ pub fn play_game_plugin(app: &mut App) {
                               playing::move_fly_unit,
                               playing::animate_miss_text,
                               playing::on_player_char_input,
+                              playing::on_keyboard_input,
                               playing::update_player_missiles,
                               playing::update_aircraft_flames,
-                              playing::update_player_score,
-                              playing::animate_explosion_sheet).run_if(in_state(PlayState::Playing)));
+                              playing::update_player_status,
+                              playing::animate_explosion_sheet).run_if(in_state(PlayState::Playing)))
+        .add_systems(Update, paused::on_resume_game.run_if(resource_exists::<LastPlayState>));
 }
 
 fn playing_game_setup(mut commands: Commands, 
@@ -155,7 +161,7 @@ fn playing_game_setup(mut commands: Commands,
                     spawn_marked_text(builder, PlayerScore, &format!("{}", player.score), INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
                 });
                 // 玩家血条
-                spawn_health_bar(builder, HealthBar(true), 100, 3);
+                spawn_health_bar(builder, HealthBar{role: GameRole::Player, value: HEALTH_MAX_VALUE}, 100, 3);
             });
 
         // 中间的对战图标及时间
@@ -194,7 +200,7 @@ fn playing_game_setup(mut commands: Commands,
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 grid_template_columns: vec![
-                    GridTrack::flex(1.2),
+                    GridTrack::flex(1.5),
                     GridTrack::flex(1.),
                     GridTrack::flex(1.),
                     GridTrack::flex(1.),
@@ -225,7 +231,7 @@ fn playing_game_setup(mut commands: Commands,
                 spawn_marked_text(builder, FlyingUnitText(FlyingUnitKind::Shield), "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
             });
             // 敌方血条
-            spawn_health_bar(builder, HealthBar(false), 100, 4);
+            spawn_health_bar(builder, HealthBar{role: GameRole::Enemy, value: HEALTH_MAX_VALUE}, 100, 4);
         });
     });
     spawn_space_stars(&mut commands, &asset_server, window);
@@ -275,18 +281,20 @@ fn spawn_health_bar(
         BackgroundColor(Color::NONE),
         BorderColor::all(Color::srgb_u8(107, 162, 215)),
     )).with_children(|builder| {
-        builder.spawn(
+        builder.spawn((
             Node {
                 width: Val::Percent(100.),
                 height: Val::Percent(100.),
                 display: Display::Grid,
-                grid_template_columns: RepeatedGridTrack::flex(HEALTH_BAR_LEN, 1.),
+                grid_template_columns: RepeatedGridTrack::flex(HEALTH_MAX_VALUE, 1.),
                 grid_template_rows: vec![GridTrack::flex(1.)],
                 ..default()
-            }
-        ).with_children(|builder| {
-            let index_fn: fn(u16) -> u16 = if health_bar.0 { |i| i } else { |i| HEALTH_BAR_LEN - i  };
-            for i in 0..HEALTH_BAR_LEN {
+            },
+            health_bar.clone()
+        )).with_children(|builder| {
+            let index_fn: fn(u16) -> u16 =
+                if health_bar.role == GameRole::Player { |i| i } else { |i| HEALTH_MAX_VALUE - i  };
+            for i in 0..HEALTH_MAX_VALUE {
                 let color = if i < health {
                     gradient_health_bar_color(index_fn(i))
                 } else {

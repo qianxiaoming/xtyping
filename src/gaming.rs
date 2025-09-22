@@ -22,6 +22,7 @@ pub fn play_game_plugin(app: &mut App) {
         .init_resource::<BombSpawnState>()
         .init_resource::<ShieldSpawnState>()
         .init_resource::<HealthPackSpawnState>()
+        .init_resource::<FlyingUnitCounter>()
         .add_observer(playing::on_bomb_exploded)
         .add_systems(OnEnter(GameState::Gaming), playing_game_setup)
         .add_systems(OnEnter(PlayState::Splash), splash::game_splash_setup)
@@ -38,7 +39,8 @@ pub fn play_game_plugin(app: &mut App) {
                               playing::move_fly_unit,
                               playing::animate_miss_text,
                               playing::on_player_char_input,
-                              playing::update_player_missiles, 
+                              playing::update_player_missiles,
+                              playing::update_aircraft_flames,
                               playing::update_player_score,
                               playing::animate_explosion_sheet).run_if(in_state(PlayState::Playing)));
 }
@@ -208,19 +210,19 @@ fn playing_game_setup(mut commands: Commands,
         ).with_children(|builder| {
             builder.spawn(Node::default()).with_children(|builder| {
                 spawn_image_node(builder, &asset_server, "images/fighter-jet.png", Vec2::splat(30.), 2., 4.);
-                spawn_marked_text(builder, AircraftCounter::default(), "0/0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
+                spawn_marked_text(builder, FlyingUnitText(FlyingUnitKind::Aircraft), "0/0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
             });
             builder.spawn(Node::default()).with_children(|builder| {
                 spawn_image_node(builder, &asset_server, "images/bomb.png", Vec2::splat(30.), 2., 4.);
-                spawn_marked_text(builder, BombCounter::default(), "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
+                spawn_marked_text(builder, FlyingUnitText(FlyingUnitKind::Bomb), "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
             });
             builder.spawn(Node::default()).with_children(|builder| {
                 spawn_image_node(builder, &asset_server, "images/first-aid-kit.png", Vec2::splat(30.), 2., 4.);
-                spawn_marked_text(builder, HealthPackCounter::default(), "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
+                spawn_marked_text(builder, FlyingUnitText(FlyingUnitKind::HealthPack), "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
             });
             builder.spawn(Node::default()).with_children(|builder| {
                 spawn_image_node(builder, &asset_server, "images/shield.png", Vec2::splat(30.), 2., 4.);
-                spawn_marked_text(builder, ShieldCounter::default(), "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
+                spawn_marked_text(builder, FlyingUnitText(FlyingUnitKind::Shield), "0", INFO_TEXT_COLOR, fonts.ui_font.clone(), 28.);
             });
             // 敌方血条
             spawn_health_bar(builder, HealthBar(false), 100, 4);

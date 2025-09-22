@@ -1,3 +1,4 @@
+use rand::Rng;
 use bevy::asset::AssetServer;
 use bevy::color::Color;
 use bevy::input::keyboard::{Key, KeyboardInput};
@@ -43,7 +44,7 @@ pub fn playground_setup(mut commands: Commands,
     game_letters.candidate_letters = game_settings.level_letters[game_player.player.level as usize - 1].clone();
 
     // 计算玩家的安全距离
-    game_player.safe_position = -(window.width() / 2. - FIGHTER_JET_MARGIN - FIGHTER_JET_SIZE * FIGHTER_JET_SCALE - 100.);
+    game_player.safe_position = -(window.width() / 2. - FIGHTER_JET_MARGIN - FIGHTER_JET_SIZE * FIGHTER_JET_SCALE - 50.);
 }
 
 pub fn move_fly_unit(
@@ -51,18 +52,28 @@ pub fn move_fly_unit(
     mut query: Query<(Entity, &FlyingUnit, &mut Transform)>,
     mut game_routes: ResMut<GameRoutes>,
     mut game_letters: ResMut<GameLetters>,
-    aircraft_counter: Single<(&mut Text, &mut AircraftCounter)>,
+    mut counter: ResMut<FlyingUnitCounter>,
+    mut aircraft: Query<&mut Aircraft>,
+    mut counter_texts: Query<(&mut Text, &FlyingUnitText), With<FlyingUnitText>>,
     game_fonts: Res<GameFonts>,
     game_player: Res<GamePlayer>,
+    asset_server: Res<AssetServer>,
     time: Res<Time>,
+    window: Single<&Window>
 ) {
-    let (mut text, mut counter) = aircraft_counter.into_inner();
+    let mut text = counter_texts.iter_mut().find_map(
+        |(txt, FlyingUnitText(kind))| {
+            matches!(kind, FlyingUnitKind::Aircraft).then_some(txt)
+        }
+    ).unwrap();
+    let mut rng = rand::rng();
     for (entity, unit, mut transform) in &mut query {
         // 沿着 -X 方向移动
         transform.translation.x -= unit.speed * time.delta_secs();
+        let pos = transform.translation.xy();
 
         // 到达销毁边界时，移除整个实体
-        if transform.translation.x < game_player.safe_position {
+        if pos.x < game_player.safe_position {
             if let Some(pos) = game_routes.used_routes.iter().position(|r| r.id == unit.route) {
                 // 如果只包含这一个 Entity，则将Route转移到未使用队列
                 if game_routes.used_routes[pos].entities.len() == 1
@@ -76,14 +87,18 @@ pub fn move_fly_unit(
                 }
             }
 
+            // 把字母放回候选队列中
             if !game_letters.candidate_letters.contains(&unit.letter) {
                 game_letters.candidate_letters.push(unit.letter);
             }
+
+            // 销毁实体
             commands.entity(entity).despawn();
 
-            if unit.kind == UnitKind::Aircraft {
-                counter.miss += 1;
-                *text = Text::new(format!("{}/{}", counter.hit, counter.miss));
+            // 如果当前是敌机，出现一个“MISS”的文本提示
+            if unit.kind == FlyingUnitKind::Aircraft {
+                counter.missed += 1;
+                *text = Text::new(format!("{}/{}", counter.destroyed, counter.missed));
 
                 // 生成Miss文字动画
                 commands.spawn((
@@ -97,6 +112,33 @@ pub fn move_fly_unit(
                     Transform::from_translation(transform.translation),
                     MissText(Timer::from_seconds(1., TimerMode::Once))
                 ));
+            }
+        } else if unit.kind == FlyingUnitKind::Aircraft && pos.x < 0. {
+            // 当前实体是敌机，根据距离判断是准备进入发射火球状态还是可以发射了
+            if let Ok(mut ac) = aircraft.get_mut(entity) {
+                if ac.ready {
+                    if ac.flame.is_none() && pos.x < ac.fire_pos {
+                        // 达到了发射位置，现在发射火球
+                        let texture = asset_server.load("images/flame.png");
+                        let pos_y = if pos.y > 0. { -20. } else { 20. };
+                        let flame = commands.spawn((
+                            Sprite {
+                                image: texture,
+                                image_mode: SpriteImageMode::Auto,
+                                color: Color::WHITE,
+                                ..default()
+                            },
+                            Transform::from_translation(Vec3::new(pos.x, pos.y + pos_y,0.))
+                                .with_scale(Vec3::splat(FIGHTER_JET_SCALE)),
+                            Flame { speed: unit.speed * 1.5 }
+                        )).id();
+                        ac.flame = Some(flame);
+                    }
+                } else {
+                    ac.ready = true;
+                    // 敌机的攻击位置设为中间向左窗口宽度四分之一内的随机位置
+                    ac.fire_pos = pos.x - rng.random_range(5.0..window.width()/4.);
+                }
             }
         }
     }
@@ -169,18 +211,13 @@ pub fn update_player_missiles(
     mut commands: Commands,
     mut missiles: Query<(Entity, &Missile, &mut Transform), Without<FlyingUnit>>,
     mut player: ResMut<GamePlayer>,
+    mut counter: ResMut<FlyingUnitCounter>,
+    mut counter_texts: Query<(&mut Text, &FlyingUnitText), With<FlyingUnitText>>,
+    aircraft: Query<&Aircraft>,
     time: Res<Time>,
     explosion: ResMut<ExplosionTexture>,
-    aircraft_counter: Single<(&mut Text, &mut AircraftCounter)>,
-    bomb_counter: Single<(&mut Text, &mut BombCounter), Without<AircraftCounter>>,
-    shield_counter: Single<(&mut Text, &mut ShieldCounter), (Without<AircraftCounter>, Without<BombCounter>)>,
-    health_pack_counter: Single<(&mut Text, &mut HealthPackCounter), (Without<AircraftCounter>, Without<BombCounter>, Without<ShieldCounter>)>,
     flying_units: Query<(&FlyingUnit, &Transform), (With<FlyingUnit>, Without<Missile>)>,
 ) {
-    let (mut aircraft_text, mut aircraft_counter) = aircraft_counter.into_inner();
-    let (mut bomb_text, mut bomb_counter) = bomb_counter.into_inner();
-    let (mut shield_text, mut shield_counter) = shield_counter.into_inner();
-    let (mut health_pack_text, mut health_pack_counter) = health_pack_counter.into_inner();
     for (entity, missile, mut transform) in &mut missiles {
         // 获取目标
         let (unit, target_transform) = if let Ok(t) = flying_units.get(missile.target) {
@@ -211,23 +248,47 @@ pub fn update_player_missiles(
 
             // 更新统计信息
             match unit.kind {
-                UnitKind::Aircraft => {
-                    aircraft_counter.hit += 1;
-                    *aircraft_text = Text::new(format!("{}/{}", aircraft_counter.hit, aircraft_counter.miss));
+                FlyingUnitKind::Aircraft => {
+                    counter.destroyed += 1;
+                    let mut text = counter_texts.iter_mut().find_map(
+                        |(txt, FlyingUnitText(kind))| {
+                            matches!(kind, FlyingUnitKind::Aircraft).then_some(txt)
+                        }
+                    ).unwrap();
+                    *text = Text::new(format!("{}/{}", counter.destroyed, counter.missed));
                     player.player.score += 1;
+                    // 销毁发射的火球
+                    if let Ok(ac) = aircraft.get(missile.target) && ac.flame.is_some() {
+                        commands.entity(ac.flame.unwrap()).despawn();
+                    }
                 },
-                UnitKind::Bomb => {
-                    bomb_counter.0 += 1;
-                    *bomb_text = Text::new(format!("{}", bomb_counter.0));
+                FlyingUnitKind::Bomb => {
+                    counter.bomb += 1;
+                    let mut text = counter_texts.iter_mut().find_map(
+                        |(txt, FlyingUnitText(kind))| {
+                            matches!(kind, FlyingUnitKind::Bomb).then_some(txt)
+                        }
+                    ).unwrap();
+                    *text = Text::new(format!("{}", counter.bomb));
                     commands.trigger(BombExplodedEvent);
                 },
-                UnitKind::Shield => {
-                    shield_counter.0 += 1;
-                    *shield_text = Text::new(format!("{}", shield_counter.0));
+                FlyingUnitKind::Shield => {
+                    counter.shield += 1;
+                    let mut text = counter_texts.iter_mut().find_map(
+                        |(txt, FlyingUnitText(kind))| {
+                            matches!(kind, FlyingUnitKind::Shield).then_some(txt)
+                        }
+                    ).unwrap();
+                    *text = Text::new(format!("{}", counter.shield));
                 },
-                UnitKind::HealthPack => {
-                    health_pack_counter.0 += 1;
-                    *health_pack_text = Text::new(format!("{}", health_pack_counter.0));
+                FlyingUnitKind::HealthPack => {
+                    counter.health_pack += 1;
+                    let mut text = counter_texts.iter_mut().find_map(
+                        |(txt, FlyingUnitText(kind))| {
+                            matches!(kind, FlyingUnitKind::HealthPack).then_some(txt)
+                        }
+                    ).unwrap();
+                    *text = Text::new(format!("{}", counter.health_pack));
                 }
             }
 
@@ -268,21 +329,13 @@ pub fn animate_explosion_sheet(
 
 pub fn update_aircraft_flames(
     mut commands: Commands,
+    mut flames: Query<(Entity, &Flame, &mut Transform), Without<FighterJet>>,
     time: Res<Time>,
-    mut flames: Query<(Entity, &Flame, &mut Transform)>,
-    fighters: Query<&Transform, With<FighterJet>>,
+    fighter_jet: Single<&Transform, With<FighterJet>>,
 ) {
     for (flame_entity, flame, mut transform) in &mut flames {
         // 获取目标玩家
-        let target_transform = if let Ok(t) = fighters.get(flame.target) {
-            t
-        } else {
-            // 玩家不存在则移除导弹
-            commands.entity(flame_entity).despawn();
-            continue;
-        };
-
-        let target_pos = target_transform.translation.truncate();
+        let target_pos = fighter_jet.translation.truncate();
         let current_pos = transform.translation.truncate();
 
         // 方向
@@ -325,7 +378,7 @@ pub fn on_bomb_exploded(
             Missile {
                 speed: game_settings.missile_speed,
                 target: entity,
-                kind: UnitKind::Aircraft,
+                kind: FlyingUnitKind::Aircraft,
             }
         ));
     }

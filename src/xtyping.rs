@@ -141,6 +141,8 @@ struct GameSettings {
     pub level_letters: Vec<Vec<char>>,
     // 不同用户级别对应的飞行速度区间
     pub level_speeds: Vec<(f32, f32)>,
+    // 不同用户级别每一关的敌机数量
+    pub aircraft_count: Vec<usize>,
     // 敌机出现的时间间隔
     pub aircraft_intervals: Vec<(f32, f32)>,
     // 敌机的开火距离
@@ -180,6 +182,7 @@ impl Default for GameSettings {
         GameSettings {
             level_letters,
             level_speeds: vec![(15., 30.),(40., 80.),(80., 120.),(120., 150.),(150., 200.)],
+            aircraft_count: vec![150, 200, 300, 400, 500],
             aircraft_intervals: vec![(4., 8.),(3., 5.),(1.2, 2.),(0.8, 1.5),(0.3, 1.2)],
             firing_distance: 200.,
             bomb_intervals: vec![(60., 90.),(90., 120.),(120., 150.),(150., 300.),(300., 500.)],

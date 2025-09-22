@@ -1,5 +1,5 @@
 use bevy::color::Color;
-use bevy::prelude::{Component, Deref, DerefMut, Entity, Event, Timer};
+use bevy::prelude::{Component, Deref, DerefMut, Entity, Event, Resource, Timer};
 use crate::gaming::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState};
 
 /// 游戏时间显示
@@ -27,24 +27,33 @@ pub struct HealthBar(pub bool);
 
 pub const HEALTH_BAR_LEN: u16 = 100;
 
-/// 敌方数量统计文本
-#[derive(Component, Default)]
-pub struct AircraftCounter {
-    pub hit: usize,
-    pub miss: usize,
+#[derive(Resource, Default)]
+pub struct FlyingUnitCounter {
+    pub destroyed: usize,
+    pub missed: usize,
+    pub bomb: usize,
+    pub shield: usize,
+    pub health_pack: usize,
 }
 
+/// 敌方数量统计文本
+// #[derive(Component, Default)]
+// pub struct AircraftCounter {
+//     pub destroyed: usize,
+//     pub missed: usize,
+// }
+
 /// 炸弹数量统计文本
-#[derive(Component, Default)]
-pub struct BombCounter(pub usize);
+// #[derive(Component, Default)]
+// pub struct BombCounter(pub usize);
 
 /// 血包数量统计文本
-#[derive(Component, Default)]
-pub struct HealthPackCounter(pub usize);
+// #[derive(Component, Default)]
+// pub struct HealthPackCounter(pub usize);
 
 /// 护盾数量统计文本
-#[derive(Component, Default)]
-pub struct ShieldCounter(pub usize);
+// #[derive(Component, Default)]
+// pub struct ShieldCounter(pub usize);
 
 /// Splash动画元素
 #[derive(Component)]
@@ -64,16 +73,19 @@ pub const TARGET_LETTER_SIZE: f32 = 88.;
 pub const TARGET_LETTER_COLOR: Color = Color::srgb_u8(88, 251, 254);
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub enum UnitKind {
+pub enum FlyingUnitKind {
     Aircraft,
     Bomb,
     Shield,
     HealthPack
 }
 
+#[derive(Component)]
+pub struct FlyingUnitText(pub FlyingUnitKind);
+
 pub trait FlyingUnitTrait {
     type SpawnState;
-    fn kind() -> UnitKind;
+    fn kind() -> FlyingUnitKind;
 }
 
 #[derive(Component)]
@@ -81,15 +93,19 @@ pub struct FlyingUnit {
     pub route: i32,
     pub letter: char,
     pub speed: f32,
-    pub kind: UnitKind,
+    pub kind: FlyingUnitKind,
 }
 
-#[derive(Component)]
-pub struct Aircraft;
+#[derive(Component, Default)]
+pub struct Aircraft {
+    pub ready: bool,   // 是否准备发射
+    pub fire_pos: f32, // 发射的坐标位置
+    pub flame: Option<Entity> // 发射的火球
+}
 
 impl FlyingUnitTrait for Aircraft {
     type SpawnState = AircraftSpawnState;
-    fn kind() -> UnitKind { UnitKind::Aircraft }
+    fn kind() -> FlyingUnitKind { FlyingUnitKind::Aircraft }
 }
 
 pub const AIRCRAFT_KIND: i32 = 3;
@@ -100,7 +116,7 @@ pub struct Bomb;
 
 impl FlyingUnitTrait for Bomb {
     type SpawnState = BombSpawnState;
-    fn kind() -> UnitKind { UnitKind::Bomb }
+    fn kind() -> FlyingUnitKind { FlyingUnitKind::Bomb }
 }
 
 #[derive(Component, Default)]
@@ -108,7 +124,7 @@ pub struct HealthPack;
 
 impl FlyingUnitTrait for HealthPack {
     type SpawnState = HealthPackSpawnState;
-    fn kind() -> UnitKind { UnitKind::HealthPack }
+    fn kind() -> FlyingUnitKind { FlyingUnitKind::HealthPack }
 }
 
 #[derive(Component, Default)]
@@ -116,7 +132,7 @@ pub struct Shield;
 
 impl FlyingUnitTrait for Shield {
     type SpawnState = ShieldSpawnState;
-    fn kind() -> UnitKind { UnitKind::Shield }
+    fn kind() -> FlyingUnitKind { FlyingUnitKind::Shield }
 }
 
 #[derive(Component)]
@@ -127,14 +143,13 @@ pub struct MissText(pub Timer);
 pub struct Missile {
     pub speed: f32,
     pub target: Entity,
-    pub kind: UnitKind
+    pub kind: FlyingUnitKind
 }
 
 /// 敌机发射的火焰武器
 #[derive(Component)]
 pub struct Flame {
-    pub speed: f32,
-    pub target: Entity,
+    pub speed: f32
 }
 
 #[derive(Component, Deref, DerefMut)]

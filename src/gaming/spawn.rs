@@ -73,9 +73,9 @@ pub fn spawn_aircraft(mut commands: Commands,
                 route: route.id,
                 letter,
                 speed: rng.random_range(speed.0..=speed.1),
-                kind: UnitKind::Aircraft
+                kind: FlyingUnitKind::Aircraft
             },
-            Aircraft,
+            Aircraft::default(),
             children![(
                 Text2d::new(letter),
                 TextFont {

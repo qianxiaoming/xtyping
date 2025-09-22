@@ -180,7 +180,7 @@ impl Default for GameSettings {
         GameSettings {
             level_letters,
             level_speeds: vec![(15., 30.),(40., 80.),(80., 120.),(120., 150.),(150., 200.)],
-            aircraft_intervals: vec![(4., 8.),(3., 5.),(1.5, 2.5),(0.8, 1.5),(0.3, 1.2)],
+            aircraft_intervals: vec![(4., 8.),(3., 5.),(1.2, 2.),(0.8, 1.5),(0.3, 1.2)],
             firing_distance: 200.,
             bomb_intervals: vec![(60., 90.),(90., 120.),(120., 150.),(150., 300.),(300., 500.)],
             shield_intervals: vec![(100., 150.),(150., 200.),(200., 250.),(250., 300.),(300., 350.)],

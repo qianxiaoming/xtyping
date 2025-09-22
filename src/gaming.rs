@@ -22,6 +22,7 @@ pub fn play_game_plugin(app: &mut App) {
         .init_resource::<BombSpawnState>()
         .init_resource::<ShieldSpawnState>()
         .init_resource::<HealthPackSpawnState>()
+        .add_observer(playing::on_bomb_exploded)
         .add_systems(OnEnter(GameState::Gaming), playing_game_setup)
         .add_systems(OnEnter(PlayState::Splash), splash::game_splash_setup)
         .add_systems(OnEnter(PlayState::Playing), playing::playground_setup)

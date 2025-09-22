@@ -1,5 +1,5 @@
 use bevy::color::Color;
-use bevy::prelude::{Component, Deref, DerefMut, Entity, Timer};
+use bevy::prelude::{Component, Deref, DerefMut, Entity, Event, Timer};
 use crate::gaming::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState};
 
 /// 游戏时间显示
@@ -141,3 +141,6 @@ pub struct Flame {
 pub struct Explosion(pub Timer);
 
 pub const EXPLOSION_SHEET_MAX_INDEX: usize = 8;
+
+#[derive(Event)]
+pub struct BombExplodedEvent;

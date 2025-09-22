@@ -84,20 +84,20 @@ pub fn move_fly_unit(
             if unit.kind == UnitKind::Aircraft {
                 counter.miss += 1;
                 *text = Text::new(format!("{}/{}", counter.hit, counter.miss));
-            }
 
-            // 生成Miss文字动画
-            commands.spawn((
-                Text2d::new("MISS"),
-                TextFont {
-                    font: game_fonts.normal_font.clone(),
-                    font_size: 24.,
-                    ..Default::default()
-                },
-                TextColor(Color::srgb_u8(255, 100, 100)),
-                Transform::from_translation(transform.translation),
-                MissText(Timer::from_seconds(1., TimerMode::Once))
+                // 生成Miss文字动画
+                commands.spawn((
+                    Text2d::new("MISS"),
+                    TextFont {
+                        font: game_fonts.normal_font.clone(),
+                        font_size: 24.,
+                        ..Default::default()
+                    },
+                    TextColor(Color::srgb_u8(255, 100, 100)),
+                    Transform::from_translation(transform.translation),
+                    MissText(Timer::from_seconds(1., TimerMode::Once))
                 ));
+            }
         }
     }
 }
@@ -219,6 +219,7 @@ pub fn update_player_missiles(
                 UnitKind::Bomb => {
                     bomb_counter.0 += 1;
                     *bomb_text = Text::new(format!("{}", bomb_counter.0));
+                    commands.trigger(BombExplodedEvent);
                 },
                 UnitKind::Shield => {
                     shield_counter.0 += 1;
@@ -298,5 +299,34 @@ pub fn update_aircraft_flames(
         if current_pos.distance(target_pos) < 30.0 {
             commands.entity(flame_entity).despawn();
         }
+    }
+}
+
+pub fn on_bomb_exploded(
+    _: On<BombExplodedEvent>,
+    mut commands: Commands,
+    aircraft: Query<Entity, With<Aircraft>>,
+    asset_server: Res<AssetServer>,
+    game_settings: Res<GameSettings>,
+    window: Single<&Window>
+) {
+    let missile = asset_server.load("images/missile.png");
+    let missile_pos = FIGHTER_JET_MARGIN - window.width()/2. + FIGHTER_JET_SIZE*FIGHTER_JET_SCALE/2.;
+    for entity in aircraft.iter() {
+        commands.spawn((
+            Sprite {
+                image: missile.clone(),
+                image_mode: SpriteImageMode::Auto,
+                color: Color::WHITE,
+                ..default()
+            },
+            Transform::from_translation(Vec3::new(missile_pos, -20., 0.))
+                .with_scale(Vec3::splat(FIGHTER_JET_SCALE)),
+            Missile {
+                speed: game_settings.missile_speed,
+                target: entity,
+                kind: UnitKind::Aircraft,
+            }
+        ));
     }
 }

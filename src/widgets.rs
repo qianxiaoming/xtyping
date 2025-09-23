@@ -4,10 +4,12 @@ use bevy::prelude::*;
 mod button;
 mod input;
 mod listview;
+mod dialog;
 
 pub use button::*;
 pub use input::*;
 pub use listview::*;
+pub use dialog::*;
 
 pub const UI_FONT_SIZE: f32 = 18.0;
 

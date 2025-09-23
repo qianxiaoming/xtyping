@@ -170,6 +170,8 @@ pub fn on_keyboard_input(
 ) {
     if keyboard_input.just_released(KeyCode::Space) {
         next_state.set(PlayState::Paused);
+    } else if keyboard_input.just_released(KeyCode::Escape) {
+        next_state.set(PlayState::Exiting);
     }
 }
 

@@ -3,6 +3,7 @@ mod playing;
 mod splash;
 mod spawn;
 mod paused;
+mod exiting;
 
 use rand::Rng;
 use bevy::app::App;
@@ -31,6 +32,7 @@ pub fn play_game_plugin(app: &mut App) {
         .add_systems(OnEnter(PlayState::Splash), splash::game_splash_setup)
         .add_systems(OnEnter(PlayState::Playing), playing::playground_setup)
         .add_systems(OnEnter(PlayState::Paused), paused::paused_setup)
+        .add_systems(OnEnter(PlayState::Exiting), exiting::confirm_exit_setup)
         .add_systems(Update, update_game_time)
         .add_systems(Update, on_window_resized.run_if(on_message::<WindowResized>
             .and(in_state(GameState::Gaming))))
@@ -48,7 +50,7 @@ pub fn play_game_plugin(app: &mut App) {
                               playing::update_aircraft_flames,
                               playing::update_player_status,
                               playing::animate_explosion_sheet).run_if(in_state(PlayState::Playing)))
-        .add_systems(Update, paused::on_resume_game.run_if(resource_exists::<LastPlayState>));
+        .add_systems(Update, paused::on_resume_game.run_if(in_state(PlayState::Paused)));
 }
 
 fn playing_game_setup(mut commands: Commands, 

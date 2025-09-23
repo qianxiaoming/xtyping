@@ -50,7 +50,10 @@ pub fn play_game_plugin(app: &mut App) {
                               playing::update_aircraft_flames,
                               playing::update_player_status,
                               playing::animate_explosion_sheet).run_if(in_state(PlayState::Playing)))
-        .add_systems(Update, paused::on_resume_game.run_if(in_state(PlayState::Paused)));
+        .add_systems(Update, paused::on_resume_game.run_if(in_state(PlayState::Paused)))
+        .add_systems(Update, exiting::on_exit_game_button.run_if(in_state(PlayState::Exiting)))
+        .add_systems(Update, exiting::on_cancel_exit_button.run_if(in_state(PlayState::Exiting)))
+    ;
 }
 
 fn playing_game_setup(mut commands: Commands, 
@@ -359,6 +362,7 @@ fn spawn_space_stars(commands: &mut Commands, asset_server: &AssetServer, window
             let rate = rng.random_range(1.0..3.0);
 
             commands.spawn((
+                DespawnOnExit(GameState::Gaming),
                 Sprite {
                     image: texture.clone(),
                     image_mode: SpriteImageMode::Auto,

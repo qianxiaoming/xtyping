@@ -4,7 +4,7 @@ use bevy::color::Color;
 use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::math::Vec3;
 use bevy::prelude::*;
-use crate::{GameRoutes, GameLetters, GameSettings, Route, GamePlayer, GameFonts, ExplosionTexture, PlayState};
+use crate::{GameRoutes, GameLetters, GameSettings, Route, GamePlayer, GameFonts, ExplosionTexture, PlayState, GameState};
 use crate::gaming::common::*;
 use crate::gaming::{compute_route_count, gradient_health_bar_color};
 
@@ -26,6 +26,7 @@ pub fn playground_setup(
     let fighter_jet_path = format!("images/fighter_jet_{}.png", game_player.player.level);
     let texture = asset_server.load(fighter_jet_path);
     commands.spawn((
+        DespawnOnExit(GameState::Gaming),
         Sprite {
             image: texture.clone(),
             image_mode: SpriteImageMode::Auto,
@@ -109,6 +110,7 @@ pub fn move_fly_unit(
 
                 // 生成Miss文字动画
                 commands.spawn((
+                    DespawnOnExit(GameState::Gaming),
                     Text2d::new("MISS"),
                     TextFont {
                         font: game_fonts.normal_font.clone(),
@@ -129,6 +131,7 @@ pub fn move_fly_unit(
                         let texture = asset_server.load("images/flame.png");
                         let pos_y = if pos.y > 0. { -20. } else { 20. };
                         let flame = commands.spawn((
+                            DespawnOnExit(GameState::Gaming),
                             Sprite {
                                 image: texture,
                                 image_mode: SpriteImageMode::Auto,
@@ -197,6 +200,7 @@ pub fn on_player_char_input(
                     continue;
                 }
                 commands.spawn((
+                    DespawnOnExit(GameState::Gaming),
                     Sprite {
                         image: missile.clone(),
                         image_mode: SpriteImageMode::Auto,
@@ -337,6 +341,7 @@ pub fn update_player_missiles(
 
             // 产生爆炸动画
             commands.spawn((
+                DespawnOnExit(GameState::Gaming),
                 Sprite::from_atlas_image(
                     explosion.texture.clone(),
                     TextureAtlas {
@@ -414,6 +419,7 @@ pub fn on_bomb_exploded(
     let missile_pos = FIGHTER_JET_MARGIN - window.width()/2. + FIGHTER_JET_SIZE*FIGHTER_JET_SCALE/2.;
     for entity in aircraft.iter() {
         commands.spawn((
+            DespawnOnExit(GameState::Gaming),
             Sprite {
                 image: missile.clone(),
                 image_mode: SpriteImageMode::Auto,

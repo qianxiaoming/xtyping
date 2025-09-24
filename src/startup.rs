@@ -147,9 +147,9 @@ fn default_screen_setup(builder: &mut ChildSpawnerCommands, fonts: Res<GameFonts
                 spawn_image_node(builder, &asset_server, "images/first-aid-kit.png", Vec2::splat(45.), 10.0, 10.0);
                 spawn_item_desc_node(builder)
                     .with_children(|builder| {
-                        spawn_info_text(builder, "急救包", Color::srgb_u8(52, 168, 82),
+                        spawn_info_text(builder, "补血剂", Color::srgb_u8(52, 168, 82),
                                         fonts.title_font.clone(), INFO_FONT_SIZE+2.0);
-                        spawn_info_text(builder, "急救包可以快速给你补血，提高生命值，在战斗中坚持的更久！",
+                        spawn_info_text(builder, "补血剂可以恢复你的损伤，提高生命值，在战斗中坚持的更久！",
                                         INFO_TEXT_COLOR, fonts.normal_font.clone(), INFO_FONT_SIZE-2.0);
                     });
 

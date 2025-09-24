@@ -19,7 +19,7 @@ pub fn paused_setup(mut commands: Commands,
                 height: Val::Auto,
                 flex_direction: FlexDirection::Row,
                 align_items: AlignItems::Center,
-                justify_content: JustifyContent::Start,
+                justify_content: JustifyContent::Center,
                 margin: UiRect::all(Val::Px(30.0)),
                 ..default()
             }).with_children(|builder| {

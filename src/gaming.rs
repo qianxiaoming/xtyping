@@ -4,18 +4,18 @@ mod splash;
 mod spawn;
 mod paused;
 mod exiting;
+mod checkpoint;
 
 use rand::Rng;
 use bevy::app::App;
 use bevy::math::VectorSpace;
 use bevy::prelude::*;
 use bevy::window::WindowResized;
-use crate::{GamePlayer, GameRoutes, GameLetters, GameFonts, GameState, PlayState, Route, GameSettings};
+use crate::{GamePlayer, GameRoutes, GameLetters, GameFonts, GameState, PlayState, Route, GameSettings, Players, save_game_users, Player};
 use crate::{DEFAULT_ROUTE_HEIGHT, GAME_INFO_AREA_HEIGHT, GAME_INFO_AREA_MARGIN, MAX_ROUTE_COUNT};
 use crate::ui::*;
 use common::*;
 use crate::gaming::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState};
-use crate::widgets::{input_box_handle_focus, InputBox};
 
 pub fn play_game_plugin(app: &mut App) {
     app
@@ -26,17 +26,23 @@ pub fn play_game_plugin(app: &mut App) {
         .init_resource::<ShieldSpawnState>()
         .init_resource::<HealthPackSpawnState>()
         .init_resource::<FlyingUnitCounter>()
+        .insert_resource(GameSaveTimer(Timer::from_seconds(10.0, TimerMode::Repeating)))
         .add_observer(playing::on_bomb_exploded)
         .add_observer(playing::on_update_health_bar)
         .add_systems(OnEnter(GameState::Gaming), playing_game_setup)
+        .add_systems(OnExit(GameState::Gaming), playing_game_exit)
         .add_systems(OnEnter(PlayState::Splash), splash::game_splash_setup)
         .add_systems(OnEnter(PlayState::Playing), playing::playground_setup)
         .add_systems(OnEnter(PlayState::Paused), paused::paused_setup)
         .add_systems(OnEnter(PlayState::Exiting), exiting::confirm_exit_setup)
+        .add_systems(OnEnter(PlayState::Checkpoint), checkpoint::checkpoint_setup)
         .add_systems(Update, update_game_time)
         .add_systems(Update, on_window_resized.run_if(on_message::<WindowResized>
             .and(in_state(GameState::Gaming))))
-        .add_systems(Update, (move_space_stars, twinkle_space_stars).run_if(in_state(GameState::Gaming)))
+        .add_systems(Update, (move_space_stars,
+                              twinkle_space_stars,
+                              save_game_data).run_if(in_state(GameState::Gaming)))
+        .add_systems(Update, restart_game.run_if(in_state(GameState::Restart)))
         .add_systems(Update, splash::fade_tip_messages.run_if(in_state(PlayState::Splash)))
         .add_systems(Update, (spawn::spawn_aircraft,
                               spawn::spawn_equipment::<Bomb>,
@@ -50,9 +56,12 @@ pub fn play_game_plugin(app: &mut App) {
                               playing::update_aircraft_flames,
                               playing::update_player_status,
                               playing::animate_explosion_sheet).run_if(in_state(PlayState::Playing)))
+        .add_systems(Update, playing::switch_checkpoint_state.run_if(resource_exists::<CheckpointTimer>))
         .add_systems(Update, paused::on_resume_game.run_if(in_state(PlayState::Paused)))
         .add_systems(Update, exiting::on_exit_game_button.run_if(in_state(PlayState::Exiting)))
         .add_systems(Update, exiting::on_cancel_exit_button.run_if(in_state(PlayState::Exiting)))
+        .add_systems(Update, checkpoint::on_exit_game_button.run_if(in_state(PlayState::Checkpoint)))
+        .add_systems(Update, checkpoint::on_continue_game_button.run_if(in_state(PlayState::Checkpoint)))
     ;
 }
 
@@ -67,6 +76,7 @@ fn playing_game_setup(mut commands: Commands,
                       mut bomb_spawn_state: ResMut<BombSpawnState>,
                       mut shield_spawn_state: ResMut<ShieldSpawnState>,
                       mut health_pack_spawn_state: ResMut<HealthPackSpawnState>,
+                      mut flying_unit_counter: ResMut<FlyingUnitCounter>,
                       mut next_state: ResMut<NextState<PlayState>>) {
     commands.spawn((
         DespawnOnExit(GameState::Gaming),
@@ -264,7 +274,30 @@ fn playing_game_setup(mut commands: Commands,
     state.intervals = game_settings.health_pack_intervals.clone();
     state.spawn =true;
 
+    *flying_unit_counter = FlyingUnitCounter::default();
+
     next_state.set(PlayState::Splash);
+}
+
+fn update_and_save_player(player: &Player, players: &mut Players) {
+    for p in players.0.iter_mut() {
+        if player.name == p.name {
+            if player != p {
+                p.level = player.level;
+                p.score = player.score;
+                save_game_users(players);
+                break;
+            }
+        }
+    }
+}
+
+fn playing_game_exit(mut players: ResMut<Players>, game_player: Res<GamePlayer>) {
+    update_and_save_player(&game_player.player, &mut players);
+}
+
+fn restart_game(mut next_state: ResMut<NextState<GameState>>) {
+    next_state.set(GameState::Gaming);
 }
 
 fn spawn_health_bar(
@@ -463,5 +496,16 @@ fn twinkle_space_stars(time: Res<Time>, mut query: Query<(&mut Sprite, &mut Spac
         star.phase += star.rate * dt;
         let brightness = 0.5 + 0.5 * (star.phase.sin());
         sprite.color.set_alpha(brightness as f32);
+    }
+}
+
+fn save_game_data (
+    time: Res<Time>,
+    mut timer: ResMut<GameSaveTimer>,
+    mut players: ResMut<Players>,
+    game_player: Res<GamePlayer>,
+) {
+    if timer.0.tick(time.delta()).just_finished() {
+        update_and_save_player(&game_player.player, &mut players);
     }
 }

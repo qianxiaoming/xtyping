@@ -6,6 +6,8 @@ mod register;
 mod gaming;
 mod ui;
 
+use std::fs::File;
+use rand::prelude::SliceRandom;
 use bevy::prelude::*;
 use bevy::input_focus::InputFocus;
 use bevy::window::WindowPlugin;
@@ -47,7 +49,8 @@ enum GameState {
     Init,
     Startup,
     Register,
-    Gaming
+    Gaming,
+    Restart
 }
 
 /// 玩游戏过程中的可能状态
@@ -60,6 +63,7 @@ enum PlayState {
     Playing,   // 玩家交互
     Paused,    // 暂停游戏
     Exiting,   // 确认退出
+    Checkpoint, // 游戏过关
     Upgrading, // 升级祝贺
     Failed     // 玩家失败
 }
@@ -73,7 +77,7 @@ struct GameFonts {
     letter_font: Handle<Font>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Default)]
+#[derive(Deserialize, Serialize, Clone, Default, PartialEq)]
 struct Player {
     name: String,
     avatar: String,
@@ -173,18 +177,23 @@ impl Default for GameSettings {
 
         let mut level_letters: Vec<Vec<char>> = Vec::with_capacity(MAX_PLAYER_LEVELS);
         let mut current = Vec::new();
+        let mut rng = rand::rng();
         for i in 0..MAX_PLAYER_LEVELS {
             if i < letters.len() {
                 current.extend(&letters[i]);
+                if i > 0 {
+                    current.extend(&letters[0]);
+                }
+                current.shuffle(&mut rng);
             }
             level_letters.push(current.clone());
         }
 
         GameSettings {
             level_letters,
-            level_speeds: vec![(30., 60.),(70., 100.),(120., 150.),(150., 180.),(180., 220.)],
-            aircraft_count: vec![150, 200, 300, 400, 500],
-            aircraft_intervals: vec![(4., 8.),(3., 5.),(1.2, 2.),(0.8, 1.5),(0.3, 1.2)],
+            level_speeds: vec![(50., 70.),(70., 100.),(120., 150.),(150., 180.),(180., 220.)],
+            aircraft_count: vec![10, 200, 300, 400, 500],
+            aircraft_intervals: vec![(3., 5.),(1.5, 3.),(1., 1.5),(0.8, 1.),(0.3, 1.)],
             firing_distance: 200.,
             bomb_intervals: vec![(100., 150.),(150., 200.),(200., 250.),(300., 400.),(400., 450.)],
             shield_intervals: vec![(100., 150.),(150., 200.),(200., 250.),(250., 300.),(300., 350.)],
@@ -230,4 +239,12 @@ fn init_resources(
     }
 
     next.set(GameState::Startup);
+}
+
+fn save_game_users(players: &Players) {
+    if let Ok(json) = serde_json::to_string_pretty(&players.0) {
+        if let Err(e) = std::fs::write(PLAYERS_DATA_FILE, json.as_bytes()) {
+            error!("Failed to save player data: {}", e);
+        }
+    }
 }

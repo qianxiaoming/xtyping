@@ -158,3 +158,9 @@ pub struct UpdateHealthBarEvent(pub u16);
 
 #[derive(Resource, Default)]
 pub struct LastPlayState(pub PlayState);
+
+#[derive(Resource, Default)]
+pub struct CheckpointTimer(pub Timer);
+
+#[derive(Resource, Default)]
+pub struct GameSaveTimer(pub Timer);

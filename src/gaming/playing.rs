@@ -63,6 +63,7 @@ pub fn move_fly_unit(
     mut counter: ResMut<FlyingUnitCounter>,
     mut aircraft: Query<&mut Aircraft>,
     mut counter_texts: Query<(&mut Text, &FlyingUnitText), With<FlyingUnitText>>,
+    game_settings: Res<GameSettings>,
     game_fonts: Res<GameFonts>,
     game_player: Res<GamePlayer>,
     asset_server: Res<AssetServer>,
@@ -96,10 +97,7 @@ pub fn move_fly_unit(
             }
 
             // 把字母放回候选队列中
-            if !game_letters.candidate_letters.contains(&unit.letter) {
-                game_letters.candidate_letters.push(unit.letter);
-            }
-
+            game_letters.candidate_letters.push(unit.letter);
             // 销毁实体
             commands.entity(entity).despawn();
 
@@ -121,6 +119,12 @@ pub fn move_fly_unit(
                     Transform::from_translation(transform.translation),
                     MissText(Timer::from_seconds(1., TimerMode::Once))
                 ));
+
+                //判断是否完成了一关
+                let total = game_settings.aircraft_count[game_player.player.level as usize - 1];
+                if counter.destroyed + counter.missed >= total {
+                    commands.insert_resource(CheckpointTimer(Timer::from_seconds(1., TimerMode::Once)))
+                }
             }
         } else if unit.kind == FlyingUnitKind::Aircraft && pos.x < 0. {
             // 当前实体是敌机，根据距离判断是准备进入发射火球状态还是可以发射了
@@ -257,6 +261,7 @@ pub fn update_player_missiles(
     mut player: ResMut<GamePlayer>,
     mut counter: ResMut<FlyingUnitCounter>,
     mut counter_texts: Query<(&mut Text, &FlyingUnitText), With<FlyingUnitText>>,
+    game_settings: Res<GameSettings>,
     aircraft: Query<&Aircraft>,
     time: Res<Time>,
     explosion: ResMut<ExplosionTexture>,
@@ -307,6 +312,11 @@ pub fn update_player_missiles(
                     }
                     // 更新敌机的血条
                     commands.trigger(UpdateHealthBarEvent(counter.destroyed as u16));
+                    //判断是否完成了一关
+                    let total = game_settings.aircraft_count[player.player.level as usize - 1];
+                    if counter.destroyed + counter.missed >= total {
+                        commands.insert_resource(CheckpointTimer(Timer::from_seconds(1., TimerMode::Once)))
+                    }
                 },
                 FlyingUnitKind::Bomb => {
                     counter.bomb += 1;
@@ -447,6 +457,10 @@ pub fn on_update_health_bar(
     mut color_query: Query<&mut BackgroundColor>
 ) {
     let total = game_settings.aircraft_count[(player.player.level-1) as usize] as u16;
+    if total < event.0 {
+        return;
+    }
+
     let health = ((total - event.0) as f32 / total as f32 * 100.).ceil() as u16;
     for (entity, mut bar) in health_bars.iter_mut() {
         if bar.role == GameRole::Enemy && bar.value != health {
@@ -464,5 +478,17 @@ pub fn on_update_health_bar(
             }
             bar.value = player.health;
         }
+    }
+}
+
+pub fn switch_checkpoint_state(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut timer: ResMut<CheckpointTimer>,
+    mut next_state: ResMut<NextState<PlayState>>,
+) {
+    if timer.0.tick(time.delta()).is_finished() {
+        commands.remove_resource::<CheckpointTimer>();
+        next_state.set(PlayState::Checkpoint);
     }
 }

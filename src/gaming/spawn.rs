@@ -3,7 +3,7 @@ use bevy::asset::AssetServer;
 use bevy::color::Color;
 use bevy::math::Vec3;
 use bevy::prelude::*;
-use crate::{GamePlayer, GameRoutes, GameLetters, GameSettings, GameFonts, Route, GameState};
+use crate::{GamePlayer, GameRoutes, GameLetters, GameSettings, GameFonts, Route, GameState, PlayState};
 use crate::gaming::common::*;
 
 fn random_route<'a>(game_data: &'a mut GameRoutes, rng: &mut impl Rng) -> &'a mut Route {
@@ -43,6 +43,7 @@ pub fn spawn_aircraft(mut commands: Commands,
                       mut state: ResMut<AircraftSpawnState>,
                       mut game_routes: ResMut<GameRoutes>,
                       mut game_letters: ResMut<GameLetters>,
+                      mut next_state: ResMut<NextState<PlayState>>,
                       game_player: Res<GamePlayer>,
                       time: Res<Time>,
                       asset_server: Res<AssetServer>,
@@ -92,9 +93,11 @@ pub fn spawn_aircraft(mut commands: Commands,
         state.count += 1;
 
         // 重置到新的随机时间
-        let range = game_settings.aircraft_intervals[level - 1];
-        let next_duration = rng.random_range(range.0..=range.1);
-        state.timer = Timer::from_seconds(next_duration, TimerMode::Once);
+        if state.count < game_settings.aircraft_count[game_player.player.level as usize - 1] {
+            let range = game_settings.aircraft_intervals[level - 1];
+            let next_duration = rng.random_range(range.0..=range.1);
+            state.timer = Timer::from_seconds(next_duration, TimerMode::Once);
+        }
     }
 }
 

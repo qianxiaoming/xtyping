@@ -16,6 +16,7 @@ use crate::{DEFAULT_ROUTE_HEIGHT, GAME_INFO_AREA_HEIGHT, GAME_INFO_AREA_MARGIN, 
 use crate::ui::*;
 use common::*;
 use crate::gaming::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState};
+use crate::widgets::ListViewMarker;
 
 pub fn play_game_plugin(app: &mut App) {
     app
@@ -29,6 +30,8 @@ pub fn play_game_plugin(app: &mut App) {
         .insert_resource(GameSaveTimer(Timer::from_seconds(10.0, TimerMode::Repeating)))
         .add_observer(playing::on_bomb_exploded)
         .add_observer(playing::on_update_health_bar)
+        .add_observer(playing::on_shield_activated)
+        .add_observer(playing::on_health_pack_apply)
         .add_systems(OnEnter(GameState::Gaming), playing_game_setup)
         .add_systems(OnExit(GameState::Gaming), playing_game_exit)
         .add_systems(OnEnter(PlayState::Splash), splash::game_splash_setup)
@@ -56,6 +59,7 @@ pub fn play_game_plugin(app: &mut App) {
                               playing::update_aircraft_flames,
                               playing::update_player_status,
                               playing::animate_explosion_sheet).run_if(in_state(PlayState::Playing)))
+        .add_systems(Update, playing::rotate_health_pack_effect.run_if(in_state(PlayState::Playing).and(|q: Query<(), With<HealthPackAnimation>>| !q.is_empty())))
         .add_systems(Update, playing::switch_checkpoint_state.run_if(resource_exists::<CheckpointTimer>))
         .add_systems(Update, paused::on_resume_game.run_if(in_state(PlayState::Paused)))
         .add_systems(Update, exiting::on_exit_game_button.run_if(in_state(PlayState::Exiting)))
@@ -258,7 +262,7 @@ fn playing_game_setup(mut commands: Commands,
     let state = &mut bomb_spawn_state.as_mut().0;
     state.speeds = game_settings.level_speeds.clone();
     state.intervals = game_settings.bomb_intervals.clone();
-    state.spawn =true;
+    //state.spawn =true;
 
     // 初始化护盾的生成参数
     *shield_spawn_state = ShieldSpawnState::default();

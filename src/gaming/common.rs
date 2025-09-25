@@ -120,6 +120,12 @@ impl FlyingUnitTrait for HealthPack {
 
 pub const HEALTH_PACK_RESTORE: u16 = 10;
 
+#[derive(Component)]
+pub struct HealthPackAnimation(pub Timer);
+
+#[derive(Event)]
+pub struct HealthPackApplyEvent;
+
 #[derive(Component, Default)]
 pub struct Shield;
 
@@ -152,6 +158,9 @@ pub const EXPLOSION_SHEET_MAX_INDEX: usize = 8;
 
 #[derive(Event)]
 pub struct BombExplodedEvent;
+
+#[derive(Event)]
+pub struct ShieldActivatedEvent;
 
 #[derive(Event)]
 pub struct UpdateHealthBarEvent(pub u16);

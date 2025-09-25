@@ -336,6 +336,8 @@ pub fn update_player_missiles(
                         }
                     ).unwrap();
                     *text = Text::new(format!("{}", counter.shield));
+                    // 给玩家增加护盾
+                    commands.trigger(ShieldActivatedEvent);
                 },
                 FlyingUnitKind::HealthPack => {
                     counter.health_pack += 1;
@@ -346,6 +348,8 @@ pub fn update_player_missiles(
                     ).unwrap();
                     *text = Text::new(format!("{}", counter.health_pack));
                     player.health = (player.health + HEALTH_PACK_RESTORE).min(HEALTH_MAX_VALUE);
+                    // 给玩家显示健康恢复特效
+                    commands.trigger(HealthPackApplyEvent);
                 }
             }
 
@@ -447,6 +451,12 @@ pub fn on_bomb_exploded(
     }
 }
 
+pub fn on_shield_activated (
+    _: On<ShieldActivatedEvent>
+) {
+    info!("on_shield_activated");
+}
+
 /// 用于更新敌方的血条
 pub fn on_update_health_bar(
     event: On<UpdateHealthBarEvent>,
@@ -477,6 +487,43 @@ pub fn on_update_health_bar(
                 }
             }
             bar.value = player.health;
+        }
+    }
+}
+
+pub fn on_health_pack_apply(
+    _: On<HealthPackApplyEvent>,
+    mut commands: Commands,
+    query: Single<&Transform, With<FighterJet>>,
+    assets: Res<AssetServer>
+) {
+    let texture = assets.load("images/health_pack_apply.png");
+    commands.spawn((
+        DespawnOnExit(GameState::Gaming),
+        Sprite {
+            image: texture.clone(),
+            image_mode: SpriteImageMode::Auto,
+            color: Color::srgba(1., 1., 1., 0.5),
+            ..default()
+        },
+        Transform::from_translation(query.translation).with_scale(Vec3::splat(0.5)),
+        HealthPackAnimation(Timer::from_seconds(2.0, TimerMode::Once))
+        ));
+}
+
+pub fn rotate_health_pack_effect(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut Transform, &mut HealthPackAnimation)>,
+) {
+    for (e, mut transform, mut rotating) in &mut query {
+        if !rotating.0.is_finished() {
+            rotating.0.tick(time.delta());
+            
+            let delta_angle = -std::f32::consts::TAU * time.delta_secs() / 2.0;
+            transform.rotate_z(delta_angle);
+        } else {
+            commands.entity(e).despawn();
         }
     }
 }

@@ -3,7 +3,7 @@ use bevy::asset::AssetServer;
 use bevy::color::Color;
 use bevy::math::Vec3;
 use bevy::prelude::*;
-use crate::{GamePlayer, GameRoutes, GameLetters, GameSettings, GameFonts, Route, GameState, PlayState};
+use crate::{GamePlayer, GameRoutes, GameLetters, GameSettings, GameFonts, Route, GameState};
 use crate::gaming::common::*;
 
 fn random_route<'a>(game_data: &'a mut GameRoutes, rng: &mut impl Rng) -> &'a mut Route {
@@ -43,7 +43,6 @@ pub fn spawn_aircraft(mut commands: Commands,
                       mut state: ResMut<AircraftSpawnState>,
                       mut game_routes: ResMut<GameRoutes>,
                       mut game_letters: ResMut<GameLetters>,
-                      mut next_state: ResMut<NextState<PlayState>>,
                       game_player: Res<GamePlayer>,
                       time: Res<Time>,
                       asset_server: Res<AssetServer>,

@@ -6,7 +6,6 @@ mod register;
 mod gaming;
 mod ui;
 
-use std::fs::File;
 use rand::prelude::SliceRandom;
 use bevy::prelude::*;
 use bevy::input_focus::InputFocus;
@@ -89,7 +88,7 @@ struct Player {
 struct Players(Vec<Player>);
 
 const MAX_PLAYERS_COUNT: usize = 7;
-const MAX_PLAYER_LEVELS: usize = 5;
+const MAX_PLAYER_LEVELS: u32 = 5;
 
 impl Players {
     pub fn get(&self, name: &str) -> &Player {
@@ -146,6 +145,8 @@ struct GameSettings {
     pub level_letters: Vec<Vec<char>>,
     // 不同用户级别对应的飞行速度区间
     pub level_speeds: Vec<(f32, f32)>,
+    // 升级的分数
+    pub upgrade_scores: Vec<u32>,
     // 不同用户级别每一关的敌机数量
     pub aircraft_count: Vec<usize>,
     // 敌机出现的时间间隔
@@ -177,10 +178,10 @@ impl Default for GameSettings {
             .map(|s| s.chars().collect())
             .collect();
 
-        let mut level_letters: Vec<Vec<char>> = Vec::with_capacity(MAX_PLAYER_LEVELS);
+        let mut level_letters: Vec<Vec<char>> = Vec::with_capacity(MAX_PLAYER_LEVELS as usize);
         let mut current = Vec::new();
         let mut rng = rand::rng();
-        for i in 0..MAX_PLAYER_LEVELS {
+        for i in 0..MAX_PLAYER_LEVELS as usize {
             if i < letters.len() {
                 current.extend(&letters[i]);
                 if i > 0 {
@@ -193,7 +194,8 @@ impl Default for GameSettings {
 
         GameSettings {
             level_letters,
-            level_speeds: vec![(50., 70.),(70., 100.),(120., 150.),(150., 180.),(180., 220.)],
+            level_speeds: vec![(40., 70.),(70., 100.),(120., 150.),(150., 180.),(180., 220.)],
+            upgrade_scores: vec![2000, 10000, 28000, 50000],
             aircraft_count: vec![10, 200, 300, 400, 500],
             aircraft_intervals: vec![(3., 5.),(1.5, 3.),(1., 1.5),(0.8, 1.),(0.3, 1.)],
             firing_distance: 200.,

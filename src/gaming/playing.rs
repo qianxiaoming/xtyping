@@ -4,9 +4,9 @@ use bevy::color::Color;
 use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::math::Vec3;
 use bevy::prelude::*;
-use crate::{GameRoutes, GameLetters, GameSettings, Route, GamePlayer, GameFonts, ExplosionTexture, PlayState, GameState};
+use crate::{GameRoutes, GameLetters, GameSettings, Route, GamePlayer, GameFonts, ExplosionTexture, PlayState, GameState, MAX_PLAYER_LEVELS};
 use crate::gaming::common::*;
-use crate::gaming::{compute_route_count, gradient_health_bar_color};
+use crate::gaming::{calculate_upgrade_percent, compute_route_count, gradient_health_bar_color};
 
 pub fn playground_setup(
     mut commands: Commands,
@@ -53,6 +53,7 @@ pub fn playground_setup(
 
     // 计算玩家的安全距离
     game_player.safe_position = -(window.width() / 2. - FIGHTER_JET_MARGIN - FIGHTER_JET_SIZE * FIGHTER_JET_SCALE - 50.);
+    game_player.health = HEALTH_MAX_VALUE;
 }
 
 pub fn move_fly_unit(
@@ -225,16 +226,38 @@ pub fn on_player_char_input(
 }
 
 pub fn update_player_status(
-    player: ResMut<GamePlayer>,
+    settings: Res<GameSettings>,
+    asset_server: Res<AssetServer>,
+    mut player: ResMut<GamePlayer>,
     mut health_bars: Query<(Entity, &mut HealthBar)>,
     mut score_text: Single<&mut Text, With<PlayerScore>>,
+    mut color_query: Query<&mut BackgroundColor>,
+    mut upgrade_progress: Single<&mut Node, With<LevelProgress>>,
+    mut game_letters: ResMut<GameLetters>,
+    mut level_stars: Single<(&mut ImageNode, &mut Node), (With<LevelStarImage>, Without<LevelProgress>)>,
+    mut next_state: ResMut<NextState<PlayState>>,
     children_query: Query<&Children>,
-    mut color_query: Query<&mut BackgroundColor>
 ) {
     if !player.is_changed() {
         return;
     }
     **score_text = Text::new(format!("{}", player.player.score));
+
+    // 判断用户是否升级了
+    if player.player.level != MAX_PLAYER_LEVELS {
+        let mut base_score = 0_u32;
+        for i in 0..player.player.level {
+            base_score += settings.upgrade_scores[i as usize];
+        }
+        if player.player.score >= base_score {
+            player.player.level += 1;
+            level_stars.0.image = asset_server.load(&format!("images/star-{}.png", player.player.level));
+            level_stars.1.width = Val::Px(24.*(player.player.level as f32));
+            game_letters.candidate_letters = settings.level_letters[player.player.level as usize - 1].clone();
+            next_state.set(PlayState::Upgrading);
+        }
+    }
+    upgrade_progress.width = Val::Percent(calculate_upgrade_percent(&player.player, &settings));
 
     for (entity, mut bar) in health_bars.iter_mut() {
         if bar.role == GameRole::Player && bar.value != player.health {
@@ -252,6 +275,9 @@ pub fn update_player_status(
             }
             bar.value = player.health;
         }
+    }
+    if player.health == 0 {
+        next_state.set(PlayState::Failed);
     }
 }
 
@@ -433,11 +459,28 @@ pub fn update_aircraft_flames(
 pub fn on_bomb_exploded(
     _: On<BombExplodedEvent>,
     mut commands: Commands,
+    query: Single<&Transform, With<FighterJet>>,
     aircraft: Query<Entity, With<Aircraft>>,
     asset_server: Res<AssetServer>,
     game_settings: Res<GameSettings>,
     window: Single<&Window>
 ) {
+    let texture = asset_server.load("images/enhance.png");
+    commands.spawn((
+        DespawnOnExit(GameState::Gaming),
+        Sprite {
+            image: texture.clone(),
+            image_mode: SpriteImageMode::Auto,
+            color: Color::srgba(1., 1., 1., 0.5),
+            ..default()
+        },
+        Transform::from_translation(query.translation).with_scale(Vec3::splat(0.5)),
+        EquipmentEffect {
+            timer: Timer::from_seconds(1.5, TimerMode::Once),
+            duration: 1.5
+        }
+    ));
+
     let missile = asset_server.load("images/missile.png");
     let missile_pos = FIGHTER_JET_MARGIN - window.width()/2. + FIGHTER_JET_SIZE*FIGHTER_JET_SCALE/2.;
     for entity in aircraft.iter() {
@@ -463,14 +506,13 @@ pub fn on_bomb_exploded(
 pub fn on_shield_activated (
     _: On<ShieldActivatedEvent>,
     mut commands: Commands,
-    mut fighter_jet: Single<&mut FighterJet>,
+    mut query: Single<(&mut FighterJet, &Transform), With<FighterJet>>,
     time: Res<Time>,
     settings: Res<GameSettings>,
-    query: Single<&Transform, With<FighterJet>>,
     assets: Res<AssetServer>
 ) {
-    fighter_jet.protected = true;
-    fighter_jet.protect_since = time.elapsed_secs();
+    query.0.protected = true;
+    query.0.protect_since = time.elapsed_secs();
     let texture = assets.load("images/shield_activated.png");
     commands.spawn((
         DespawnOnExit(GameState::Gaming),
@@ -480,7 +522,7 @@ pub fn on_shield_activated (
             color: Color::srgba(1., 1., 1., 0.5),
             ..default()
         },
-        Transform::from_translation(query.translation).with_scale(Vec3::splat(0.5)),
+        Transform::from_translation(query.1.translation).with_scale(Vec3::splat(0.5)),
         EquipmentEffect {
             timer: Timer::from_seconds(settings.shield_active_time, TimerMode::Once),
             duration: settings.shield_active_time

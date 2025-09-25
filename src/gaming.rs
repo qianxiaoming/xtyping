@@ -5,18 +5,19 @@ mod spawn;
 mod paused;
 mod exiting;
 mod checkpoint;
+mod upgrade;
+mod failed;
 
 use rand::Rng;
 use bevy::app::App;
 use bevy::math::VectorSpace;
 use bevy::prelude::*;
 use bevy::window::WindowResized;
-use crate::{GamePlayer, GameRoutes, GameLetters, GameFonts, GameState, PlayState, Route, GameSettings, Players, save_game_users, Player};
+use crate::{GamePlayer, GameRoutes, GameLetters, GameFonts, GameState, PlayState, Route, GameSettings, Players, save_game_users, Player, MAX_PLAYER_LEVELS};
 use crate::{DEFAULT_ROUTE_HEIGHT, GAME_INFO_AREA_HEIGHT, GAME_INFO_AREA_MARGIN, MAX_ROUTE_COUNT};
 use crate::ui::*;
 use common::*;
 use crate::gaming::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState};
-use crate::widgets::ListViewMarker;
 
 pub fn play_game_plugin(app: &mut App) {
     app
@@ -39,6 +40,8 @@ pub fn play_game_plugin(app: &mut App) {
         .add_systems(OnEnter(PlayState::Paused), paused::paused_setup)
         .add_systems(OnEnter(PlayState::Exiting), exiting::confirm_exit_setup)
         .add_systems(OnEnter(PlayState::Checkpoint), checkpoint::checkpoint_setup)
+        .add_systems(OnEnter(PlayState::Upgrading), upgrade::upgrading_setup)
+        .add_systems(OnEnter(PlayState::Failed), failed::player_failed_setup)
         .add_systems(Update, update_game_time)
         .add_systems(Update, on_window_resized.run_if(on_message::<WindowResized>
             .and(in_state(GameState::Gaming))))
@@ -66,6 +69,9 @@ pub fn play_game_plugin(app: &mut App) {
         .add_systems(Update, exiting::on_cancel_exit_button.run_if(in_state(PlayState::Exiting)))
         .add_systems(Update, checkpoint::on_exit_game_button.run_if(in_state(PlayState::Checkpoint)))
         .add_systems(Update, checkpoint::on_continue_game_button.run_if(in_state(PlayState::Checkpoint)))
+        .add_systems(Update, upgrade::on_continue_game_button.run_if(in_state(PlayState::Upgrading)))
+        .add_systems(Update, failed::on_exit_game_button.run_if(in_state(PlayState::Failed)))
+        .add_systems(Update, failed::on_continue_game_button.run_if(in_state(PlayState::Failed)))
     ;
 }
 
@@ -154,7 +160,7 @@ fn playing_game_setup(mut commands: Commands,
                             )).with_children(|builder| {
                                 builder.spawn((
                                     Node {
-                                        width: Val::Percent(50.),
+                                        width: Val::Percent(calculate_upgrade_percent(&game_player.player, &game_settings)),
                                         height: Val::Percent(100.),
                                         ..default()
                                     },
@@ -262,7 +268,7 @@ fn playing_game_setup(mut commands: Commands,
     let state = &mut bomb_spawn_state.as_mut().0;
     state.speeds = game_settings.level_speeds.clone();
     state.intervals = game_settings.bomb_intervals.clone();
-    //state.spawn =true;
+    state.spawn =true;
 
     // 初始化护盾的生成参数
     *shield_spawn_state = ShieldSpawnState::default();
@@ -281,6 +287,22 @@ fn playing_game_setup(mut commands: Commands,
     *flying_unit_counter = FlyingUnitCounter::default();
 
     next_state.set(PlayState::Splash);
+}
+
+pub fn calculate_upgrade_percent(player: &Player, settings: &GameSettings) -> f32 {
+    if player.level == MAX_PLAYER_LEVELS {
+        return 100.;
+    }
+    let mut scores = player.score;
+    for i in 0..player.level {
+        if scores >= settings.upgrade_scores[i as usize] {
+            scores -= settings.upgrade_scores[i as usize];
+        } else {
+            break;
+        }
+    }
+
+    100. * scores as f32 / settings.upgrade_scores[player.level as usize - 1] as f32
 }
 
 fn update_and_save_player(player: &Player, players: &mut Players) {

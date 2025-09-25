@@ -156,6 +156,8 @@ struct GameSettings {
     pub bomb_intervals: Vec<(f32, f32)>,
     // 护盾出现的时间间隔
     pub shield_intervals: Vec<(f32, f32)>,
+    // 护盾防护的时间
+    pub shield_active_time: f32,
     // 血包出现的时间间隔
     pub health_pack_intervals: Vec<(f32, f32)>,
     // 玩家发射的导弹速度
@@ -198,6 +200,7 @@ impl Default for GameSettings {
             bomb_intervals: vec![(100., 150.),(150., 200.),(200., 250.),(300., 400.),(400., 450.)],
             shield_intervals: vec![(100., 150.),(150., 200.),(200., 250.),(250., 300.),(300., 350.)],
             health_pack_intervals: vec![(200., 300.),(300., 400.),(400., 500.),(500., 600.),(600., 700.)],
+            shield_active_time: 25.,
             missile_speed: 1000.
         }
     }

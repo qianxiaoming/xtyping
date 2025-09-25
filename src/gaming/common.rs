@@ -1,3 +1,4 @@
+use std::time::Duration;
 use bevy::color::Color;
 use bevy::prelude::{Component, Deref, DerefMut, Entity, Event, Resource, Timer};
 use crate::gaming::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState, SpawnState};
@@ -54,7 +55,10 @@ pub struct SplashTextRow {
 
 /// 玩家的战斗机
 #[derive(Component)]
-pub struct FighterJet;
+pub struct FighterJet {
+    pub protected: bool,
+    pub protect_since: f32,
+}
 
 pub const FIGHTER_JET_MARGIN: f32 = 80.0;
 pub const FIGHTER_JET_SCALE: f32 = 0.3;
@@ -121,7 +125,10 @@ impl FlyingUnitTrait for HealthPack {
 pub const HEALTH_PACK_RESTORE: u16 = 10;
 
 #[derive(Component)]
-pub struct HealthPackAnimation(pub Timer);
+pub struct EquipmentEffect {
+    pub timer: Timer,
+    pub duration: f32,
+}
 
 #[derive(Event)]
 pub struct HealthPackApplyEvent;

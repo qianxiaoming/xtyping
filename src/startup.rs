@@ -158,7 +158,7 @@ fn default_screen_setup(builder: &mut ChildSpawnerCommands, fonts: Res<GameFonts
                     .with_children(|builder| {
                         spawn_info_text(builder, "护盾", Color::srgb_u8(66, 133, 243),
                                         fonts.title_font.clone(), INFO_FONT_SIZE+2.0);
-                        spawn_info_text(builder, "护盾赋予你长达15秒坚不可摧的保护，期间所有的攻击对你无效。",
+                        spawn_info_text(builder, "护盾赋予你长达25秒坚不可摧的保护，期间所有的攻击对你无效。",
                                         INFO_TEXT_COLOR, fonts.normal_font.clone(), INFO_FONT_SIZE - 2.0);
                     });
             });

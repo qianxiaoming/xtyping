@@ -59,7 +59,7 @@ pub fn play_game_plugin(app: &mut App) {
                               playing::update_aircraft_flames,
                               playing::update_player_status,
                               playing::animate_explosion_sheet).run_if(in_state(PlayState::Playing)))
-        .add_systems(Update, playing::rotate_health_pack_effect.run_if(in_state(PlayState::Playing).and(|q: Query<(), With<HealthPackAnimation>>| !q.is_empty())))
+        .add_systems(Update, playing::equipment_effect.run_if(in_state(PlayState::Playing).and(|q: Query<(), With<EquipmentEffect>>| !q.is_empty())))
         .add_systems(Update, playing::switch_checkpoint_state.run_if(resource_exists::<CheckpointTimer>))
         .add_systems(Update, paused::on_resume_game.run_if(in_state(PlayState::Paused)))
         .add_systems(Update, exiting::on_exit_game_button.run_if(in_state(PlayState::Exiting)))

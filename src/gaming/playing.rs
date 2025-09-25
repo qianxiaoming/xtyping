@@ -35,7 +35,7 @@ pub fn playground_setup(
         },
         Transform::from_translation(Vec3::new(FIGHTER_JET_MARGIN - window.width()/2., 0., 0.))
             .with_scale(Vec3::splat(FIGHTER_JET_SCALE)),
-        FighterJet,
+        FighterJet { protected: false, protect_since: 0. },
     ));
 
     // 计算并创建敌机的航道
@@ -393,12 +393,13 @@ pub fn update_aircraft_flames(
     mut commands: Commands,
     mut game_player: ResMut<GamePlayer>,
     mut flames: Query<(Entity, &Flame, &mut Transform), Without<FighterJet>>,
+    mut fighter_jet: Single<(&mut FighterJet, &Transform), With<FighterJet>>,
     time: Res<Time>,
-    fighter_jet: Single<&Transform, With<FighterJet>>,
+    settings: Res<GameSettings>
 ) {
     for (flame_entity, flame, mut transform) in &mut flames {
         // 获取目标玩家
-        let target_pos = fighter_jet.translation.truncate();
+        let target_pos = fighter_jet.1.translation.truncate();
         let current_pos = transform.translation.truncate();
 
         // 方向
@@ -412,7 +413,15 @@ pub fn update_aircraft_flames(
         transform.rotation = Quat::from_rotation_z(angle);
 
         // 命中检测
-        if current_pos.distance(target_pos) < 30.0 {
+        if fighter_jet.0.protected &&
+            time.elapsed_secs() - fighter_jet.0.protect_since > settings.shield_active_time {
+            fighter_jet.0.protected = false;
+        }
+        if fighter_jet.0.protected {
+            if current_pos.distance(target_pos) < 80.0 {
+                commands.entity(flame_entity).despawn();
+            }
+        } else if current_pos.distance(target_pos) < 30.0 {
             commands.entity(flame_entity).despawn();
             if game_player.health != 0 {
                 game_player.health -= 1;
@@ -452,9 +461,31 @@ pub fn on_bomb_exploded(
 }
 
 pub fn on_shield_activated (
-    _: On<ShieldActivatedEvent>
+    _: On<ShieldActivatedEvent>,
+    mut commands: Commands,
+    mut fighter_jet: Single<&mut FighterJet>,
+    time: Res<Time>,
+    settings: Res<GameSettings>,
+    query: Single<&Transform, With<FighterJet>>,
+    assets: Res<AssetServer>
 ) {
-    info!("on_shield_activated");
+    fighter_jet.protected = true;
+    fighter_jet.protect_since = time.elapsed_secs();
+    let texture = assets.load("images/shield_activated.png");
+    commands.spawn((
+        DespawnOnExit(GameState::Gaming),
+        Sprite {
+            image: texture.clone(),
+            image_mode: SpriteImageMode::Auto,
+            color: Color::srgba(1., 1., 1., 0.5),
+            ..default()
+        },
+        Transform::from_translation(query.translation).with_scale(Vec3::splat(0.5)),
+        EquipmentEffect {
+            timer: Timer::from_seconds(settings.shield_active_time, TimerMode::Once),
+            duration: settings.shield_active_time
+        }
+    ));
 }
 
 /// 用于更新敌方的血条
@@ -507,20 +538,20 @@ pub fn on_health_pack_apply(
             ..default()
         },
         Transform::from_translation(query.translation).with_scale(Vec3::splat(0.5)),
-        HealthPackAnimation(Timer::from_seconds(2.0, TimerMode::Once))
+        EquipmentEffect {timer: Timer::from_seconds(1.5, TimerMode::Once), duration: 1.5}
         ));
 }
 
-pub fn rotate_health_pack_effect(
+pub fn equipment_effect(
     mut commands: Commands,
     time: Res<Time>,
-    mut query: Query<(Entity, &mut Transform, &mut HealthPackAnimation)>,
+    mut query: Query<(Entity, &mut Transform, &mut EquipmentEffect)>,
 ) {
-    for (e, mut transform, mut rotating) in &mut query {
-        if !rotating.0.is_finished() {
-            rotating.0.tick(time.delta());
+    for (e, mut transform, mut equipment) in &mut query {
+        if !equipment.timer.is_finished() {
+            equipment.timer.tick(time.delta());
             
-            let delta_angle = -std::f32::consts::TAU * time.delta_secs() / 2.0;
+            let delta_angle = -std::f32::consts::TAU * time.delta_secs() / equipment.duration;
             transform.rotate_z(delta_angle);
         } else {
             commands.entity(e).despawn();

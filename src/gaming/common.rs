@@ -63,8 +63,11 @@ pub const FIGHTER_JET_MARGIN: f32 = 80.0;
 pub const FIGHTER_JET_SCALE: f32 = 0.3;
 pub const FIGHTER_JET_SIZE: f32 = 300.;
 
-pub const TARGET_LETTER_SIZE: f32 = 88.;
+pub const TARGET_LETTER_SIZE: f32 = 32.;
 pub const TARGET_LETTER_COLOR: Color = Color::srgb_u8(88, 251, 254);
+
+pub const CHECKPOINT_LETTER_SIZE: f32 = 52.;
+pub const CHECKPOINT_LETTER_COLOR: Color = Color::srgb_u8(245, 53, 53);
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum FlyingUnitKind {
@@ -179,3 +182,19 @@ pub struct CheckpointTimer(pub Timer);
 
 #[derive(Resource, Default)]
 pub struct GameSaveTimer(pub Timer);
+
+#[derive(Component)]
+pub struct SpaceWarship;
+
+#[derive(Component)]
+pub struct CheckpointLetter {
+    pub letter: char,
+    pub index: usize,
+    pub destroyed: bool,
+}
+
+#[derive(Resource, Default)]
+pub struct CheckpointLetters {
+    pub letters: Vec<char>,
+    pub current: usize,
+}

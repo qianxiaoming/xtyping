@@ -606,9 +606,66 @@ pub fn switch_checkpoint_state(
     time: Res<Time>,
     mut timer: ResMut<CheckpointTimer>,
     mut next_state: ResMut<NextState<PlayState>>,
+    game_fonts: Res<GameFonts>,
+    assets: Res<AssetServer>,
+    window: Single<&Window>
 ) {
     if timer.0.tick(time.delta()).is_finished() {
         commands.remove_resource::<CheckpointTimer>();
-        next_state.set(PlayState::Checkpoint);
+        // next_state.set(PlayState::Checkpoint);
+
+        // 加载关卡boss
+        let texture = assets.load("images/space-warship.png");
+        commands.spawn((
+            DespawnOnExit(GameState::Gaming),
+            Sprite {
+                image: texture.clone(),
+                image_mode: SpriteImageMode::Auto,
+                color: Color::WHITE,
+                ..default()
+            },
+            Transform::from_translation(Vec3::splat(0.)),
+            SpaceWarship
+        ));
+
+        let sentence: Vec<_>= "Hello world".chars().collect();
+        let mut index = 0_usize;
+        let mut letters = sentence.clone();
+        letters.retain(|c| *c != ' ');
+        commands.insert_resource(
+            CheckpointLetters{
+                letters,
+                current: 0,
+            }
+        );
+        let font_ratio = 0.65;
+        let mut x = -(sentence.len() as f32 * CHECKPOINT_LETTER_SIZE * font_ratio / 2.);
+        for letter in sentence {
+            if letter != ' ' {
+                commands.spawn((
+                    DespawnOnExit(GameState::Gaming),
+                    Text2d::new(letter.to_string()),
+                    TextFont {
+                        font: game_fonts.letter_font.clone(),
+                        font_size: CHECKPOINT_LETTER_SIZE,
+                        ..Default::default()
+                    },
+                    TextColor(CHECKPOINT_LETTER_COLOR),
+                    Transform::from_translation(
+                        Vec3 {
+                            x,
+                            y: -window.height() / 2. + CHECKPOINT_LETTER_SIZE / 2. + 5.,
+                            z: 1.
+                        }),
+                    CheckpointLetter {
+                        letter,
+                        index,
+                        destroyed: false,
+                    }
+                ));
+                index += 1;
+            }
+            x += CHECKPOINT_LETTER_SIZE * font_ratio;
+        }
     }
 }

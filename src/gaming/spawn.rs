@@ -81,11 +81,11 @@ pub fn spawn_aircraft(mut commands: Commands,
                 Text2d::new(letter),
                 TextFont {
                     font: game_fonts.letter_font.clone(),
-                    font_size: TARGET_LETTER_SIZE * window.scale_factor(),
+                    font_size: TARGET_LETTER_SIZE / (FIGHTER_JET_SCALE * 0.6),
                     ..Default::default()
                 },
                 TextColor(TARGET_LETTER_COLOR),
-                Transform::from_translation(Vec3::new(AIRCRAFT_SIZE/2.+TARGET_LETTER_SIZE/2.+10., 0.0, 0.0)),
+                Transform::from_translation(Vec3::new(AIRCRAFT_SIZE/2.+TARGET_LETTER_SIZE/2.+18., 0.0, 0.0)),
             )]
         )).id();
         route.entities.push(id);
@@ -169,6 +169,7 @@ pub fn spawn_equipment<Marker: Default+Component+FlyingUnitTrait>(
     mut spawn_state: ResMut<Marker::SpawnState>,
     mut game_routes: ResMut<GameRoutes>,
     mut game_letters: ResMut<GameLetters>,
+    checkpoint: Option<Res<CheckpointLetters>>,
     game_player: Res<GamePlayer>,
     time: Res<Time>,
     asset_server: Res<AssetServer>,
@@ -178,6 +179,10 @@ pub fn spawn_equipment<Marker: Default+Component+FlyingUnitTrait>(
 where
     Marker::SpawnState: AsMut<SpawnState> + Resource
 {
+    if checkpoint.is_some() {
+        return;
+    }
+
     let state = spawn_state.as_mut().as_mut();
     if state.timer.tick(time.delta()).just_finished() {
         // 达到了创建的时间
@@ -211,7 +216,7 @@ where
                     Text2d::new(letter),
                     TextFont {
                         font: game_fonts.letter_font.clone(),
-                        font_size: TARGET_LETTER_SIZE * window.scale_factor(),
+                        font_size: TARGET_LETTER_SIZE / (FIGHTER_JET_SCALE * 0.6),
                         ..Default::default()
                     },
                     TextColor(TARGET_LETTER_COLOR),

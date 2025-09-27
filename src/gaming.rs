@@ -268,21 +268,21 @@ fn playing_game_setup(mut commands: Commands,
     let state = &mut bomb_spawn_state.as_mut().0;
     state.speeds = game_settings.level_speeds.clone();
     state.intervals = game_settings.bomb_intervals.clone();
-    state.spawn =true;
+    state.spawn = true;
 
     // 初始化护盾的生成参数
     *shield_spawn_state = ShieldSpawnState::default();
     let state = &mut shield_spawn_state.as_mut().0;
     state.speeds = game_settings.level_speeds.clone();
     state.intervals = game_settings.shield_intervals.clone();
-    state.spawn =true;
+    state.spawn = true;
 
     // 初始化血包的生成参数
     *health_pack_spawn_state = HealthPackSpawnState::default();
     let state = &mut health_pack_spawn_state.as_mut().0;
     state.speeds = game_settings.level_speeds.clone();
     state.intervals = game_settings.health_pack_intervals.clone();
-    state.spawn =true;
+    state.spawn = true;
 
     *flying_unit_counter = FlyingUnitCounter::default();
 

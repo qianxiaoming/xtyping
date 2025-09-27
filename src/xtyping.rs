@@ -6,6 +6,7 @@ mod register;
 mod gaming;
 mod ui;
 
+use std::path::PathBuf;
 use rand::prelude::SliceRandom;
 use bevy::prelude::*;
 use bevy::input_focus::InputFocus;
@@ -13,6 +14,8 @@ use bevy::window::WindowPlugin;
 use serde::{Deserialize, Serialize};
 
 const GAME_APP_TITLE: &str = "超级打字练习";
+const GAME_APP_NAME: &str = "xtyping";
+
 const PLAYERS_DATA_FILE: &str = "players.json";
 
 fn main() {
@@ -170,9 +173,9 @@ impl Default for GameSettings {
         let letters: Vec<Vec<char>> = [
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
             "1234567890",
-            "+-*/=?,.!;",
-            ":\"#*<>%'()",
-            "[]{}@_|"
+            "+-*/:=%,.;",
+            "?\"{}#!()",
+            "[]<>@_|'"
         ]
             .iter()
             .map(|s| s.chars().collect())
@@ -184,7 +187,7 @@ impl Default for GameSettings {
         for i in 0..MAX_PLAYER_LEVELS as usize {
             if i < letters.len() {
                 current.extend(&letters[i]);
-                if i > 0 {
+                if i == 1 || i == 3 {
                     current.extend(&letters[0]);
                 }
                 current.shuffle(&mut rng);
@@ -194,15 +197,15 @@ impl Default for GameSettings {
 
         GameSettings {
             level_letters,
-            level_speeds: vec![(40., 70.),(70., 100.),(120., 150.),(150., 180.),(180., 220.)],
+            level_speeds: vec![(50., 80.),(80., 110.),(120., 150.),(150., 180.),(180., 220.)],
             upgrade_scores: vec![2000, 10000, 28000, 50000],
-            aircraft_count: vec![10, 200, 300, 400, 500],
+            aircraft_count: vec![3, 300, 400, 500, 600],
             aircraft_intervals: vec![(3., 5.),(1.5, 3.),(1., 1.5),(0.8, 1.),(0.3, 1.)],
             firing_distance: 200.,
-            bomb_intervals: vec![(100., 150.),(150., 200.),(200., 250.),(300., 400.),(400., 450.)],
-            shield_intervals: vec![(100., 150.),(150., 200.),(200., 250.),(250., 300.),(300., 350.)],
-            health_pack_intervals: vec![(200., 300.),(300., 400.),(400., 500.),(500., 600.),(600., 700.)],
-            shield_active_time: 25.,
+            bomb_intervals: vec![(150., 300.),(250., 350.),(300., 450.),(400., 500.),(450., 600.)],
+            shield_intervals: vec![(200., 250.),(250., 300.),(300., 450.),(450., 500.),(500., 550.)],
+            health_pack_intervals: vec![(300., 400.),(400., 500.),(500., 600.),(600., 700.),(600., 700.)],
+            shield_active_time: 30.,
             missile_speed: 1000.
         }
     }
@@ -210,6 +213,14 @@ impl Default for GameSettings {
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
+}
+
+fn get_app_data_dir(app_name: &str) -> PathBuf {
+    let mut base_dir = dirs::data_dir().expect("无法获取用户数据目录");
+    base_dir.push(app_name);
+
+    std::fs::create_dir_all(&base_dir).expect("创建应用数据目录失败");
+    base_dir
 }
 
 /// 初始化全局的字体、用户以及图片资源
@@ -234,8 +245,10 @@ fn init_resources(
         TextureAtlasLayout::from_grid(UVec2::new(150, 129), 3, 3, None, None)
     );
 
-    if std::path::Path::new(PLAYERS_DATA_FILE).exists() {
-        std::fs::read_to_string(PLAYERS_DATA_FILE)
+    let mut data_file = get_app_data_dir(GAME_APP_NAME);
+    data_file.push(PLAYERS_DATA_FILE);
+    if std::path::Path::new(&data_file).exists() {
+        std::fs::read_to_string(&data_file)
             .and_then(|data| serde_json::from_str::<Vec<Player>>(&data).map_err(|err| err.into()))
             .map(|data| players.0.extend(data))
             .unwrap_or_else(|err| error!("Failed to parse player data: {}", err));
@@ -248,7 +261,9 @@ fn init_resources(
 
 fn save_game_users(players: &Players) {
     if let Ok(json) = serde_json::to_string_pretty(&players.0) {
-        if let Err(e) = std::fs::write(PLAYERS_DATA_FILE, json.as_bytes()) {
+        let mut data_file = get_app_data_dir(GAME_APP_NAME);
+        data_file.push(PLAYERS_DATA_FILE);
+        if let Err(e) = std::fs::write(&data_file, json.as_bytes()) {
             error!("Failed to save player data: {}", e);
         }
     }

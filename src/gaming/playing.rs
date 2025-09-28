@@ -1,6 +1,7 @@
 use rand::Rng;
 use bevy::asset::AssetServer;
 use bevy::color::Color;
+use bevy::ecs::relationship::RelationshipSourceCollection;
 use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::math::Vec3;
 use bevy::prelude::*;
@@ -339,10 +340,10 @@ pub fn update_missiles_for_aircraft(
                     }
                     // 更新敌机的血条
                     commands.trigger(UpdateHealthBarEvent(counter.destroyed as u16));
-                    //判断是否完成了一关
+                    //判断是否摧毁了所有敌机
                     let total = game_settings.aircraft_count[player.player.level as usize - 1];
                     if counter.destroyed + counter.missed >= total {
-                        commands.insert_resource(CheckpointTimer(Timer::from_seconds(1., TimerMode::Once)))
+                        commands.insert_resource(SpaceWarshipTimer(Timer::from_seconds(1., TimerMode::Once)))
                     }
                 },
                 FlyingUnitKind::SpaceWarship => {},
@@ -442,6 +443,8 @@ pub fn update_missiles_for_warship(
                 commands.remove_resource::<WarshipSentence>();
                 commands.entity(missile.target).despawn();
                 player.player.score += 50;
+
+                commands.insert_resource(CheckpointTimer(Timer::from_seconds(1., TimerMode::Once)));
             } else {
                 // 调整给玩家看的字符列表
                 let mut pos_x = 0.0_f32;
@@ -689,11 +692,10 @@ pub fn equipment_effect(
     }
 }
 
-pub fn switch_checkpoint_state(
+pub fn launch_space_warship(
     mut commands: Commands,
+    mut timer: ResMut<SpaceWarshipTimer>,
     time: Res<Time>,
-    mut timer: ResMut<CheckpointTimer>,
-    mut next_state: ResMut<NextState<PlayState>>,
     player: Res<GamePlayer>,
     settings: Res<GameSettings>,
     game_fonts: Res<GameFonts>,
@@ -701,8 +703,7 @@ pub fn switch_checkpoint_state(
     window: Single<&Window>
 ) {
     if timer.0.tick(time.delta()).is_finished() {
-        commands.remove_resource::<CheckpointTimer>();
-        // next_state.set(PlayState::Checkpoint);
+        commands.remove_resource::<SpaceWarshipTimer>();
 
         let sentence: Vec<_>= "Hello world".chars().collect();
         let letter_count = sentence.len() as f32;
@@ -782,5 +783,25 @@ pub fn switch_checkpoint_state(
             },
             SpaceWarship
         ));
+    }
+}
+
+pub fn switch_checkpoint_state(
+    mut commands: Commands,
+    mut next_state: ResMut<NextState<PlayState>>,
+    mut timer: ResMut<CheckpointTimer>,
+    letters: Query<Entity, With<WarshipLetter>>,
+    indicator: Single<Entity, With<WarshipLetterPos>>,
+    time: Res<Time>
+) {
+    if timer.0.tick(time.delta()).is_finished() {
+        commands.remove_resource::<CheckpointTimer>();
+
+        for entity in letters.iter() {
+            commands.entity(entity).despawn();
+        }
+        commands.entity(*indicator).despawn();
+
+        next_state.set(PlayState::Checkpoint);
     }
 }

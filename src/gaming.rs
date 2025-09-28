@@ -65,6 +65,7 @@ pub fn play_game_plugin(app: &mut App) {
         .add_systems(Update, playing::update_missiles_for_warship.run_if(in_state(PlayState::Playing).and(resource_exists::<WarshipSentence>)))
         .add_systems(Update, playing::equipment_effect.run_if(in_state(PlayState::Playing).and(|q: Query<(), With<EquipmentEffect>>| !q.is_empty())))
         .add_systems(Update, playing::switch_checkpoint_state.run_if(resource_exists::<CheckpointTimer>))
+        .add_systems(Update, playing::launch_space_warship.run_if(resource_exists::<SpaceWarshipTimer>))
         .add_systems(Update, paused::on_resume_game.run_if(in_state(PlayState::Paused)))
         .add_systems(Update, exiting::on_exit_game_button.run_if(in_state(PlayState::Exiting)))
         .add_systems(Update, exiting::on_cancel_exit_button.run_if(in_state(PlayState::Exiting)))

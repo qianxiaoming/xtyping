@@ -69,7 +69,7 @@ pub const TARGET_LETTER_COLOR: Color = Color::srgb_u8(88, 251, 254);
 pub const CHECKPOINT_LETTER_SIZE: f32 = 52.;
 pub const CHECKPOINT_LETTER_WAITING: Color = Color::srgb_u8(245, 53, 53);
 pub const CHECKPOINT_LETTER_TARGET: Color = Color::srgb_u8(245, 245, 53);
-pub const CHECKPOINT_LETTER_DESTROYED: Color = Color::srgb_u8(53, 245, 53);
+pub const CHECKPOINT_LETTER_DESTROYED: Color = Color::srgb_u8(97, 97, 97);
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum FlyingUnitKind {
@@ -183,6 +183,9 @@ pub struct LastPlayState(pub PlayState);
 
 #[derive(Resource, Default)]
 pub struct CheckpointTimer(pub Timer);
+
+#[derive(Resource, Default)]
+pub struct SpaceWarshipTimer(pub Timer);
 
 #[derive(Resource, Default)]
 pub struct GameSaveTimer(pub Timer);

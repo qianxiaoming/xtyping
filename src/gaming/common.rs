@@ -210,3 +210,6 @@ pub struct WarshipSentence {
 
 #[derive(Component)]
 pub struct WarshipLetterPos;
+
+const WARSHIP_WIDTH: f32 = 1305.;
+const WARSHIP_HEIGHT: f32 = 734.;

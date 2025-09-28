@@ -1,9 +1,8 @@
 use rand::Rng;
 use bevy::asset::AssetServer;
 use bevy::color::Color;
-use bevy::ecs::relationship::RelationshipSourceCollection;
 use bevy::input::keyboard::{Key, KeyboardInput};
-use bevy::math::Vec3;
+use bevy::math::{Vec3};
 use bevy::prelude::*;
 use crate::{GameRoutes, GameLetters, GameSettings, Route, GamePlayer, GameFonts, ExplosionTexture, PlayState, GameState, MAX_PLAYER_LEVELS};
 use crate::gaming::common::*;
@@ -188,6 +187,7 @@ pub fn on_player_char_input(
     mut commands: Commands,
     mut keyboard_inputs: MessageReader<KeyboardInput>,
     mut query: Query<(Entity, &FlyingUnit)>,
+    sentence: Option<Res<WarshipSentence>>,
     game_settings: Res<GameSettings>,
     asset_server: Res<AssetServer>,
     window: Single<&Window>
@@ -201,8 +201,8 @@ pub fn on_player_char_input(
             // 找到玩家输入字符对应的飞行单元（可能多个）
             let missile = asset_server.load("images/missile.png");
             let missile_pos = FIGHTER_JET_MARGIN - window.width()/2. + FIGHTER_JET_SIZE*FIGHTER_JET_SCALE/2.;
-            for (entity, mut unit) in &mut query {
-                if unit.letter.to_ascii_uppercase() != c.to_ascii_uppercase() {
+            for (entity, unit) in &mut query {
+                if sentence.is_none() && unit.letter.to_ascii_uppercase() != c.to_ascii_uppercase() {
                     continue;
                 }
                 commands.spawn((
@@ -218,7 +218,7 @@ pub fn on_player_char_input(
                     Missile {
                         speed: game_settings.missile_speed,
                         target: entity,
-                        letter: unit.letter,
+                        letter: c.to_ascii_uppercase(),
                         kind: unit.kind,
                     }
                 ));
@@ -281,6 +281,21 @@ pub fn update_player_status(
     if player.health == 0 {
         next_state.set(PlayState::Failed);
     }
+}
+
+fn spawn_explosion_animation(commands: &mut Commands, transform: Transform, explosion: &ExplosionTexture) {
+    commands.spawn((
+        DespawnOnExit(GameState::Gaming),
+        Sprite::from_atlas_image(
+            explosion.texture.clone(),
+            TextureAtlas {
+                layout: explosion.layout.clone(),
+                index: 0,
+            },
+        ),
+        transform,
+        Explosion(Timer::from_seconds(0.05, TimerMode::Repeating)),
+    ));
 }
 
 pub fn update_missiles_for_aircraft(
@@ -385,18 +400,7 @@ pub fn update_missiles_for_aircraft(
             // 产生爆炸动画
             let mut transform = Transform::from_translation(target_transform.translation);
             transform.translation.z = 1.;
-            commands.spawn((
-                DespawnOnExit(GameState::Gaming),
-                Sprite::from_atlas_image(
-                    explosion.texture.clone(),
-                    TextureAtlas {
-                        layout: explosion.layout.clone(),
-                        index: 0,
-                    },
-                ),
-                transform,
-                Explosion(Timer::from_seconds(0.05, TimerMode::Repeating)),
-            ));
+            spawn_explosion_animation(&mut commands, transform, &explosion);
         }
     }
 }
@@ -415,11 +419,6 @@ pub fn update_missiles_for_warship(
 ) {
     let (mut unit, target_transform) = warship.into_inner();
     for (entity, missile, mut transform) in &mut missiles {
-        if unit.letter != missile.letter {
-            commands.entity(entity).despawn();
-            continue;
-        }
-
         let target_pos = target_transform.translation.truncate();
         let current_pos = transform.translation.truncate();
         let dir = (target_pos - current_pos).normalize_or_zero();
@@ -431,6 +430,9 @@ pub fn update_missiles_for_warship(
         // 命中检测
         if current_pos.distance(target_pos) < 30.0 {
             commands.entity(entity).despawn();
+            if unit.letter.to_ascii_uppercase() != missile.letter {
+                continue;
+            }
             if sentence.current == sentence.letters.len() - 1 {
                 // 所有字符都被击毁，玩家通关了
                 for (_, letter, mut color) in &mut letters {
@@ -470,18 +472,7 @@ pub fn update_missiles_for_warship(
             transform.translation.x = transform.translation.x.clamp(-window.width()/2.,
                                                                     window.width()/2.);
             transform.translation.z = 1.;
-            commands.spawn((
-                DespawnOnExit(GameState::Gaming),
-                Sprite::from_atlas_image(
-                    explosion.texture.clone(),
-                    TextureAtlas {
-                        layout: explosion.layout.clone(),
-                        index: 0,
-                    },
-                ),
-                transform,
-                Explosion(Timer::from_seconds(0.05, TimerMode::Repeating)),
-            ));
+            spawn_explosion_animation(&mut commands, transform, &explosion);
         }
     }
 }

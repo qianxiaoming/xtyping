@@ -67,14 +67,17 @@ pub const TARGET_LETTER_SIZE: f32 = 32.;
 pub const TARGET_LETTER_COLOR: Color = Color::srgb_u8(88, 251, 254);
 
 pub const CHECKPOINT_LETTER_SIZE: f32 = 52.;
-pub const CHECKPOINT_LETTER_COLOR: Color = Color::srgb_u8(245, 53, 53);
+pub const CHECKPOINT_LETTER_WAITING: Color = Color::srgb_u8(245, 53, 53);
+pub const CHECKPOINT_LETTER_TARGET: Color = Color::srgb_u8(245, 245, 53);
+pub const CHECKPOINT_LETTER_DESTROYED: Color = Color::srgb_u8(53, 245, 53);
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum FlyingUnitKind {
     Aircraft,
     Bomb,
     Shield,
-    HealthPack
+    HealthPack,
+    SpaceWarship
 }
 
 #[derive(Component)]
@@ -151,6 +154,7 @@ pub struct MissText(pub Timer);
 pub struct Missile {
     pub speed: f32,
     pub target: Entity,
+    pub letter: char,
     pub kind: FlyingUnitKind
 }
 
@@ -186,15 +190,20 @@ pub struct GameSaveTimer(pub Timer);
 #[derive(Component)]
 pub struct SpaceWarship;
 
+pub const SPACE_WARSHIP_SIZE: f32 = 1300.;
+
 #[derive(Component)]
-pub struct CheckpointLetter {
+pub struct WarshipLetter {
     pub letter: char,
     pub index: usize,
     pub destroyed: bool,
 }
 
 #[derive(Resource, Default)]
-pub struct CheckpointLetters {
+pub struct WarshipSentence {
     pub letters: Vec<char>,
     pub current: usize,
 }
+
+#[derive(Component)]
+pub struct WarshipLetterPos;

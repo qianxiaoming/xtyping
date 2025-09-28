@@ -169,7 +169,7 @@ pub fn spawn_equipment<Marker: Default+Component+FlyingUnitTrait>(
     mut spawn_state: ResMut<Marker::SpawnState>,
     mut game_routes: ResMut<GameRoutes>,
     mut game_letters: ResMut<GameLetters>,
-    checkpoint: Option<Res<CheckpointLetters>>,
+    sentence: Option<Res<WarshipSentence>>,
     game_player: Res<GamePlayer>,
     time: Res<Time>,
     asset_server: Res<AssetServer>,
@@ -179,7 +179,7 @@ pub fn spawn_equipment<Marker: Default+Component+FlyingUnitTrait>(
 where
     Marker::SpawnState: AsMut<SpawnState> + Resource
 {
-    if checkpoint.is_some() {
+    if sentence.is_some() {
         return;
     }
 

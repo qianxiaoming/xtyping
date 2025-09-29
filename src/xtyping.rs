@@ -148,6 +148,10 @@ struct GameSettings {
     pub level_letters: Vec<Vec<char>>,
     // 不同用户级别对应的飞行速度区间
     pub level_speeds: Vec<(f32, f32)>,
+    // 不同级别用户战舰的发射时间间隔
+    pub warship_fire_interval: Vec<f32>,
+    // 战舰单个火炮发射间隔
+    pub warship_gun_interval: f32,
     // 升级的分数
     pub upgrade_scores: Vec<u32>,
     // 不同用户级别每一关的敌机数量
@@ -166,6 +170,8 @@ struct GameSettings {
     pub health_pack_intervals: Vec<(f32, f32)>,
     // 玩家发射的导弹速度
     pub missile_speed: f32,
+    // 战舰发射的火焰速度
+    pub flame_speed: f32,
 }
 
 impl Default for GameSettings {
@@ -198,6 +204,7 @@ impl Default for GameSettings {
         GameSettings {
             level_letters,
             level_speeds: vec![(50., 80.),(80., 110.),(120., 150.),(150., 180.),(180., 220.)],
+            warship_fire_interval: vec![4., 3., 2., 1., 0.5],
             upgrade_scores: vec![2000, 10000, 28000, 50000],
             aircraft_count: vec![3, 300, 400, 500, 600],
             aircraft_intervals: vec![(3., 5.),(1.5, 3.),(1., 1.5),(0.8, 1.),(0.3, 1.)],
@@ -206,7 +213,9 @@ impl Default for GameSettings {
             shield_intervals: vec![(200., 250.),(250., 300.),(300., 450.),(450., 500.),(500., 550.)],
             health_pack_intervals: vec![(300., 400.),(400., 500.),(500., 600.),(600., 700.),(600., 700.)],
             shield_active_time: 30.,
-            missile_speed: 1000.
+            missile_speed: 1000.,
+            flame_speed: 500.,
+            warship_gun_interval: 0.3,
         }
     }
 }

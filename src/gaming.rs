@@ -54,7 +54,7 @@ pub fn play_game_plugin(app: &mut App) {
                               spawn::spawn_equipment::<Bomb>,
                               spawn::spawn_equipment::<Shield>,
                               spawn::spawn_equipment::<HealthPack>,
-                              playing::move_fly_unit,
+                              playing::move_flying_unit,
                               playing::animate_miss_text,
                               playing::on_player_char_input,
                               playing::on_keyboard_input,
@@ -65,7 +65,10 @@ pub fn play_game_plugin(app: &mut App) {
         .add_systems(Update, playing::update_missiles_for_warship.run_if(in_state(PlayState::Playing).and(resource_exists::<WarshipSentence>)))
         .add_systems(Update, playing::equipment_effect.run_if(in_state(PlayState::Playing).and(|q: Query<(), With<EquipmentEffect>>| !q.is_empty())))
         .add_systems(Update, playing::switch_checkpoint_state.run_if(resource_exists::<CheckpointTimer>))
-        .add_systems(Update, playing::launch_space_warship.run_if(resource_exists::<SpaceWarshipTimer>))
+        .add_systems(Update, playing::update_warship_letter_arrow.run_if(resource_exists_and_changed::<WarshipSentence>))
+        .add_systems(Update, playing::warship_fires.run_if(in_state(PlayState::Playing).and(resource_exists::<WarshipSentence>)))
+        .add_systems(Update, spawn::spawn_space_warship.run_if(resource_exists::<SpaceWarshipTimer>))
+        .add_systems(Update, spawn::launch_space_warship.run_if(in_state(PlayState::Playing).and(resource_changed::<FlyingUnitCounter>)))
         .add_systems(Update, paused::on_resume_game.run_if(in_state(PlayState::Paused)))
         .add_systems(Update, exiting::on_exit_game_button.run_if(in_state(PlayState::Exiting)))
         .add_systems(Update, exiting::on_cancel_exit_button.run_if(in_state(PlayState::Exiting)))

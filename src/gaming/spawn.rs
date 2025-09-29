@@ -234,3 +234,141 @@ where
         state.timer = Timer::from_seconds(next_duration, TimerMode::Once);
     }
 }
+
+pub fn launch_space_warship(
+    mut commands: Commands,
+    game_settings: Res<GameSettings>,
+    player: Res<GamePlayer>,
+    counter: Res<FlyingUnitCounter>
+) {
+    let total = game_settings.aircraft_count[player.player.level as usize - 1];
+    if counter.destroyed + counter.missed >= total {
+        commands.insert_resource(SpaceWarshipTimer(Timer::from_seconds(1., TimerMode::Once)))
+    }
+}
+
+pub fn spawn_space_warship(
+    mut commands: Commands,
+    mut timer: ResMut<SpaceWarshipTimer>,
+    flying_unit: Query<Entity, With<FlyingUnit>>,
+    time: Res<Time>,
+    player: Res<GamePlayer>,
+    settings: Res<GameSettings>,
+    game_fonts: Res<GameFonts>,
+    assets: Res<AssetServer>,
+    window: Single<&Window>
+) {
+    if timer.0.tick(time.delta()).is_finished() {
+        commands.remove_resource::<SpaceWarshipTimer>();
+
+        for entity in flying_unit.iter() {
+            commands.entity(entity).despawn();
+        }
+
+        let sentence: Vec<_>= "Hello world".chars().collect();
+        let letter_count = sentence.len() as f32;
+        let mut index = 0_usize;
+        let mut letters = sentence.clone();
+        letters.retain(|c| *c != ' ');
+        commands.insert_resource(
+            WarshipSentence{
+                letters,
+                current: 0,
+            }
+        );
+
+        let font_ratio = 0.65;
+        let start_x = -(letter_count * CHECKPOINT_LETTER_SIZE * font_ratio / 2.);
+        let start_y = -window.height() / 2. + CHECKPOINT_LETTER_SIZE / 2. + 5.;
+        let mut x = start_x;
+        for letter in &sentence {
+            if *letter != ' ' {
+                commands.spawn((
+                    DespawnOnExit(GameState::Gaming),
+                    Text2d::new(letter.to_string()),
+                    TextFont {
+                        font: game_fonts.letter_font.clone(),
+                        font_size: CHECKPOINT_LETTER_SIZE,
+                        ..Default::default()
+                    },
+                    TextColor(if index == 0 { CHECKPOINT_LETTER_TARGET } else { CHECKPOINT_LETTER_WAITING }),
+                    Transform::from_translation(
+                        Vec3 {
+                            x,
+                            y: start_y,
+                            z: 1.
+                        }),
+                    WarshipLetter(index),
+                ));
+                index += 1;
+            }
+            x += CHECKPOINT_LETTER_SIZE * font_ratio;
+        }
+        commands.spawn((
+            DespawnOnExit(GameState::Gaming),
+            Sprite {
+                image: assets.load("images/down-arrow.png"),
+                image_mode: SpriteImageMode::Auto,
+                color: Color::WHITE,
+                ..default()
+            },
+            Transform::from_translation(Vec3::new(
+                start_x,
+                start_y + CHECKPOINT_LETTER_SIZE/2. + 15.,
+                0.)).with_scale(Vec3::splat(0.6)
+            ),
+            WarshipLetterArrow
+        ));
+
+        // 加载关卡boss
+        let half_window = window.width() / 2.;
+        let speed = settings.level_speeds[player.player.level as usize - 1].0 * 0.45;
+        let texture = assets.load("images/space-warship.png");
+        commands.spawn((
+            DespawnOnExit(GameState::Gaming),
+            Sprite {
+                image: texture.clone(),
+                image_mode: SpriteImageMode::Auto,
+                color: Color::WHITE,
+                ..default()
+            },
+            Transform::from_translation(Vec3::new((window.width() + WARSHIP_WIDTH) / 2. - 100., 0., 0.)),
+            FlyingUnit {
+                route: 0,
+                letter: sentence[0],
+                speed,
+                kind: FlyingUnitKind::Warship
+            },
+            SpaceWarship {
+                timer: Timer::from_seconds(1., TimerMode::Repeating),
+                fired: false,
+                gun_count: 0,
+                gun_state: [false; 12],
+                gun_pos: [
+                    Vec2::new(224. - WARSHIP_WIDTH / 2., WARSHIP_HEIGHT / 2. - 104.),
+                    Vec2::new(224. - WARSHIP_WIDTH / 2., WARSHIP_HEIGHT / 2. - 260.),
+                    Vec2::new(456. - WARSHIP_WIDTH / 2., WARSHIP_HEIGHT / 2. - 50.),
+                    Vec2::new(456. - WARSHIP_WIDTH / 2., WARSHIP_HEIGHT / 2. - 315.),
+                    Vec2::new(624. - WARSHIP_WIDTH / 2., WARSHIP_HEIGHT / 2. - 17.),
+                    Vec2::new(624. - WARSHIP_WIDTH / 2., WARSHIP_HEIGHT / 2. - 349.),
+                    Vec2::new(870. - WARSHIP_WIDTH / 2., WARSHIP_HEIGHT / 2. - 133.),
+                    Vec2::new(870. - WARSHIP_WIDTH / 2., WARSHIP_HEIGHT / 2. - 230.),
+                    Vec2::new(870. - WARSHIP_WIDTH / 2., WARSHIP_HEIGHT / 2. - 144.),
+                    Vec2::new(870. - WARSHIP_WIDTH / 2., WARSHIP_HEIGHT / 2. - 219.),
+                    Vec2::new(939. - WARSHIP_WIDTH / 2., WARSHIP_HEIGHT / 2. - 80.),
+                    Vec2::new(939. - WARSHIP_WIDTH / 2., WARSHIP_HEIGHT / 2. - 286.)
+                ],
+                gun_dist: [
+                    half_window + WARSHIP_WIDTH / 2. - 276.,
+                    half_window + WARSHIP_WIDTH / 2. - 510.,
+                    half_window + WARSHIP_WIDTH / 2. - 680.,
+                    half_window + WARSHIP_WIDTH / 2. - 928.,
+                    half_window + WARSHIP_WIDTH / 2. - 990.
+                ],
+                cannon: false,
+                cannon_pos: Vec2::new(661. - WARSHIP_WIDTH / 2., 0.),
+                cannon_dist: half_window + WARSHIP_WIDTH / 2. - 792.,
+            }
+        ));
+    }
+}

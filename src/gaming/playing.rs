@@ -33,7 +33,7 @@ pub fn playground_setup(
             color: Color::WHITE,
             ..default()
         },
-        Transform::from_translation(Vec3::new(FIGHTER_JET_MARGIN - window.width()/2., 0., 0.))
+        Transform::from_translation(Vec3::new(FIGHTER_JET_MARGIN - window.width()/2., 0., 2.))
             .with_scale(Vec3::splat(FIGHTER_JET_SCALE)),
         FighterJet { protected: false, protect_since: 0. },
     ));
@@ -56,7 +56,7 @@ pub fn playground_setup(
     game_player.health = HEALTH_MAX_VALUE;
 }
 
-pub fn move_fly_unit(
+pub fn move_flying_unit(
     mut commands: Commands,
     mut query: Query<(Entity, &FlyingUnit, &mut Transform)>,
     mut game_routes: ResMut<GameRoutes>,
@@ -64,7 +64,6 @@ pub fn move_fly_unit(
     mut counter: ResMut<FlyingUnitCounter>,
     mut aircraft: Query<&mut Aircraft>,
     mut counter_texts: Query<(&mut Text, &FlyingUnitText), With<FlyingUnitText>>,
-    game_settings: Res<GameSettings>,
     game_fonts: Res<GameFonts>,
     game_player: Res<GamePlayer>,
     asset_server: Res<AssetServer>,
@@ -84,21 +83,24 @@ pub fn move_fly_unit(
 
         // 到达销毁边界时，移除整个实体
         if pos.x < game_player.safe_position {
-            if let Some(pos) = game_routes.used_routes.iter().position(|r| r.id == unit.route) {
-                // 如果只包含这一个 Entity，则将Route转移到未使用队列
-                if game_routes.used_routes[pos].entities.len() == 1
-                    && game_routes.used_routes[pos].entities[0] == entity {
-                    let mut route = game_routes.used_routes.swap_remove(pos);
-                    route.entities.clear();
-                    game_routes.empty_routes.push(route);
-                } else {
-                    // 否则仅移除目标 Entity
-                    game_routes.used_routes[pos].entities.retain(|&e| e != entity);
+            if unit.kind != FlyingUnitKind::Warship {
+                if let Some(pos) = game_routes.used_routes.iter().position(|r| r.id == unit.route) {
+                    // 如果只包含这一个 Entity，则将Route转移到未使用队列
+                    if game_routes.used_routes[pos].entities.len() == 1
+                        && game_routes.used_routes[pos].entities[0] == entity {
+                        let mut route = game_routes.used_routes.swap_remove(pos);
+                        route.entities.clear();
+                        game_routes.empty_routes.push(route);
+                    } else {
+                        // 否则仅移除目标 Entity
+                        game_routes.used_routes[pos].entities.retain(|&e| e != entity);
+                    }
                 }
+
+                // 把字母放回候选队列中
+                game_letters.candidate_letters.push(unit.letter);
             }
 
-            // 把字母放回候选队列中
-            game_letters.candidate_letters.push(unit.letter);
             // 销毁实体
             commands.entity(entity).despawn();
 
@@ -120,12 +122,12 @@ pub fn move_fly_unit(
                     Transform::from_translation(transform.translation),
                     MissText(Timer::from_seconds(1., TimerMode::Once))
                 ));
+            }
 
-                //判断是否完成了一关
-                let total = game_settings.aircraft_count[game_player.player.level as usize - 1];
-                if counter.destroyed + counter.missed >= total {
-                    commands.insert_resource(CheckpointTimer(Timer::from_seconds(1., TimerMode::Once)))
-                }
+            // 如果当前是战舰，玩家还没有被摧毁，则进入通关界面
+            if unit.kind == FlyingUnitKind::Warship && game_player.health > 0 {
+                commands.remove_resource::<WarshipSentence>();
+                commands.insert_resource(CheckpointTimer(Timer::from_seconds(1., TimerMode::Once)));
             }
         } else if unit.kind == FlyingUnitKind::Aircraft && pos.x < 0. {
             // 当前实体是敌机，根据距离判断是准备进入发射火球状态还是可以发射了
@@ -145,7 +147,7 @@ pub fn move_fly_unit(
                             },
                             Transform::from_translation(Vec3::new(pos.x, pos.y + pos_y,0.))
                                 .with_scale(Vec3::splat(FIGHTER_JET_SCALE)),
-                            Flame { speed: unit.speed * 1.5 }
+                            Flame { hurt: 1, speed: unit.speed * 1.5 }
                         )).id();
                         ac.flame = Some(flame);
                     }
@@ -228,6 +230,7 @@ pub fn on_player_char_input(
 }
 
 pub fn update_player_status(
+    mut commands: Commands,
     settings: Res<GameSettings>,
     asset_server: Res<AssetServer>,
     mut player: ResMut<GamePlayer>,
@@ -239,6 +242,9 @@ pub fn update_player_status(
     mut level_stars: Single<(&mut ImageNode, &mut Node), (With<LevelStarImage>, Without<LevelProgress>)>,
     mut next_state: ResMut<NextState<PlayState>>,
     children_query: Query<&Children>,
+    letters: Query<Entity, With<WarshipLetter>>,
+    flames: Query<Entity, With<Flame>>,
+    indicator: Query<Entity, With<WarshipLetterArrow>>,
 ) {
     if !player.is_changed() {
         return;
@@ -279,6 +285,16 @@ pub fn update_player_status(
         }
     }
     if player.health == 0 {
+        commands.remove_resource::<CheckpointTimer>();
+        for entity in flames.iter() {
+            commands.entity(entity).despawn();
+        }
+        for entity in letters.iter() {
+            commands.entity(entity).despawn();
+        }
+        for entity in indicator.iter() {
+            commands.entity(entity).despawn();
+        }
         next_state.set(PlayState::Failed);
     }
 }
@@ -304,7 +320,6 @@ pub fn update_missiles_for_aircraft(
     mut player: ResMut<GamePlayer>,
     mut counter: ResMut<FlyingUnitCounter>,
     mut counter_texts: Query<(&mut Text, &FlyingUnitText), With<FlyingUnitText>>,
-    game_settings: Res<GameSettings>,
     aircraft: Query<&Aircraft>,
     time: Res<Time>,
     explosion: ResMut<ExplosionTexture>,
@@ -322,10 +337,8 @@ pub fn update_missiles_for_aircraft(
 
         let target_pos = target_transform.translation.truncate();
         let current_pos = transform.translation.truncate();
-
         // 方向
         let dir = (target_pos - current_pos).normalize_or_zero();
-
         // 移动
         transform.translation += (dir * missile.speed * time.delta_secs()).extend(0.0);
 
@@ -355,13 +368,8 @@ pub fn update_missiles_for_aircraft(
                     }
                     // 更新敌机的血条
                     commands.trigger(UpdateHealthBarEvent(counter.destroyed as u16));
-                    //判断是否摧毁了所有敌机
-                    let total = game_settings.aircraft_count[player.player.level as usize - 1];
-                    if counter.destroyed + counter.missed >= total {
-                        commands.insert_resource(SpaceWarshipTimer(Timer::from_seconds(1., TimerMode::Once)))
-                    }
                 },
-                FlyingUnitKind::SpaceWarship => {},
+                FlyingUnitKind::Warship => {},
                 FlyingUnitKind::Bomb => {
                     counter.bomb += 1;
                     let mut text = counter_texts.iter_mut().find_map(
@@ -405,14 +413,23 @@ pub fn update_missiles_for_aircraft(
     }
 }
 
+pub fn update_warship_letter_arrow(
+    sentence: Res<WarshipSentence>,
+    letters: Query<(&Transform, &WarshipLetter), With<WarshipLetter>>,
+    mut arrow: Single<(&mut Transform, &mut Visibility), (With<WarshipLetterArrow>, Without<WarshipLetter>)>,
+) {
+    arrow.0.translation.x = letters.iter()
+        .find_map(|(transform, letter)| (letter.0 == sentence.current)
+            .then(|| transform.translation.x)).unwrap_or(0.0);
+}
+
 pub fn update_missiles_for_warship(
     mut commands: Commands,
     mut player: ResMut<GamePlayer>,
     mut missiles: Query<(Entity, &Missile, &mut Transform), Without<FlyingUnit>>,
     mut sentence: ResMut<WarshipSentence>,
     mut letters: Query<(&Transform, &WarshipLetter, &mut TextColor), (With<WarshipLetter>, Without<Missile>)>,
-    mut indicator: Single<(&mut Transform, &mut Visibility), (With<WarshipLetterPos>, Without<Missile>, Without<WarshipLetter>)>,
-    warship: Single<(&mut FlyingUnit, &Transform), (With<SpaceWarship>, Without<WarshipLetterPos>, Without<Missile>, Without<WarshipLetter>)>,
+    warship: Single<(&mut FlyingUnit, &Transform), (With<SpaceWarship>, Without<Missile>, Without<WarshipLetter>)>,
     time: Res<Time>,
     explosion: ResMut<ExplosionTexture>,
     window: Single<&Window>
@@ -436,12 +453,11 @@ pub fn update_missiles_for_warship(
             if sentence.current == sentence.letters.len() - 1 {
                 // 所有字符都被击毁，玩家通关了
                 for (_, letter, mut color) in &mut letters {
-                    if letter.index == sentence.current {
+                    if letter.0 == sentence.current {
                         *color = TextColor(CHECKPOINT_LETTER_DESTROYED);
                         break;
                     }
                 }
-                *indicator.1 = Visibility::Hidden;
                 commands.remove_resource::<WarshipSentence>();
                 commands.entity(missile.target).despawn();
                 player.player.score += 50;
@@ -449,18 +465,13 @@ pub fn update_missiles_for_warship(
                 commands.insert_resource(CheckpointTimer(Timer::from_seconds(1., TimerMode::Once)));
             } else {
                 // 调整给玩家看的字符列表
-                let mut pos_x = 0.0_f32;
                 for (transform, letter, mut color) in &mut letters {
-                    if letter.index == sentence.current {
+                    if letter.0 == sentence.current {
                         *color = TextColor(CHECKPOINT_LETTER_DESTROYED);
-                    } else if letter.index == sentence.current + 1 {
+                    } else if letter.0 == sentence.current + 1 {
                         *color = TextColor(CHECKPOINT_LETTER_TARGET);
-                        pos_x = transform.translation.x;
                     }
                 }
-
-                // 移动指示器
-                indicator.0.translation.x = pos_x;
 
                 // 绑定下一个待击毁的字符
                 sentence.current += 1;
@@ -531,7 +542,7 @@ pub fn update_aircraft_flames(
         } else if current_pos.distance(target_pos) < 30.0 {
             commands.entity(flame_entity).despawn();
             if game_player.health != 0 {
-                game_player.health -= 1;
+                game_player.health -= flame.hurt;
             }
         }
     }
@@ -683,97 +694,95 @@ pub fn equipment_effect(
     }
 }
 
-pub fn launch_space_warship(
+pub fn warship_fires(
     mut commands: Commands,
-    mut timer: ResMut<SpaceWarshipTimer>,
+    warship: Single<(&mut SpaceWarship, &FlyingUnit, &Transform)>,
     time: Res<Time>,
-    player: Res<GamePlayer>,
     settings: Res<GameSettings>,
-    game_fonts: Res<GameFonts>,
-    assets: Res<AssetServer>,
-    window: Single<&Window>
+    player: Res<GamePlayer>,
+    assets: Res<AssetServer>
 ) {
-    if timer.0.tick(time.delta()).is_finished() {
-        commands.remove_resource::<SpaceWarshipTimer>();
+    let (mut warship, unit, transform) = warship.into_inner();
+    let cx = transform.translation.x;
+    let cy = transform.translation.y;
+    if warship.timer.tick(time.delta()).just_finished() {
+        warship.gun_count = if cx > warship.gun_dist[0] {
+            0
+        } else if cx > warship.gun_dist[1] {
+            2
+        } else if cx > warship.gun_dist[2] {
+            4
+        } else if cx > warship.gun_dist[3] {
+            6
+        } else if cx > warship.gun_dist[4] {
+            10
+        } else {
+            12
+        };
 
-        let sentence: Vec<_>= "Hello world".chars().collect();
-        let letter_count = sentence.len() as f32;
-        let mut index = 0_usize;
-        let mut letters = sentence.clone();
-        letters.retain(|c| *c != ' ');
-        commands.insert_resource(
-            WarshipSentence{
-                letters,
-                current: 0,
+        if !warship.fired {
+            if warship.gun_count == 0 {
+                return;
             }
-        );
-
-        let font_ratio = 0.65;
-        let start_x = -(letter_count * CHECKPOINT_LETTER_SIZE * font_ratio / 2.);
-        let start_y = -window.height() / 2. + CHECKPOINT_LETTER_SIZE / 2. + 5.;
-        let mut x = start_x;
-        for letter in &sentence {
-            if *letter != ' ' {
+            warship.gun_state = [false; 12];
+            warship.timer = Timer::from_seconds(settings.warship_gun_interval, TimerMode::Repeating);
+            warship.fired = true;
+        } else {
+            let mut gun_fired = false;
+            let mut gun = 0_usize;
+            let mut rng = rand::rng();
+            // 随机选择一个发射
+            while !gun_fired && (&warship.gun_state[..warship.gun_count]).iter().any(|s| !*s) {
+                gun = rng.random_range(0..warship.gun_count);
+                if !warship.gun_state[gun] {
+                    gun_fired = true;
+                }
+            }
+            if gun_fired {
+                let pos = warship.gun_pos[gun];
+                let texture = assets.load("images/flame_gun.png");
                 commands.spawn((
                     DespawnOnExit(GameState::Gaming),
-                    Text2d::new(letter.to_string()),
-                    TextFont {
-                        font: game_fonts.letter_font.clone(),
-                        font_size: CHECKPOINT_LETTER_SIZE,
-                        ..Default::default()
+                    Sprite {
+                        image: texture,
+                        image_mode: SpriteImageMode::Auto,
+                        color: Color::WHITE,
+                        ..default()
                     },
-                    TextColor(if index == 0 { CHECKPOINT_LETTER_TARGET } else { CHECKPOINT_LETTER_WAITING }),
-                    Transform::from_translation(
-                        Vec3 {
-                            x,
-                            y: start_y,
-                            z: 1.
-                        }),
-                    WarshipLetter {
-                        letter: *letter,
-                        index,
-                        destroyed: false,
-                    }
+                    Transform::from_translation(Vec3::new(cx + pos.x, cy + pos.y, 1.0))
+                        .with_scale(Vec3::splat(FIGHTER_JET_SCALE)),
+                    Flame { hurt: 1, speed: settings.flame_speed }
                 ));
-                index += 1;
+                warship.gun_state[gun] = true;
             }
-            x += CHECKPOINT_LETTER_SIZE * font_ratio;
-        }
-        commands.spawn((
-            DespawnOnExit(GameState::Gaming),
-            Sprite {
-                image: assets.load("images/down-arrow.png"),
-                image_mode: SpriteImageMode::Auto,
-                color: Color::WHITE,
-                ..default()
-            },
-            Transform::from_translation(Vec3::new(
-                start_x,
-                start_y + CHECKPOINT_LETTER_SIZE/2. + 15.,
-                0.)).with_scale(Vec3::splat(0.6)
-            ),
-            WarshipLetterPos
-        ));
 
-        // 加载关卡boss
-        let texture = assets.load("images/space-warship.png");
-        commands.spawn((
-            DespawnOnExit(GameState::Gaming),
-            Sprite {
-                image: texture.clone(),
-                image_mode: SpriteImageMode::Auto,
-                color: Color::WHITE,
-                ..default()
-            },
-            Transform::from_translation(Vec3::new((window.width() + SPACE_WARSHIP_SIZE) / 2., 0., 0.)),
-            FlyingUnit {
-                route: 0,
-                letter: sentence[0],
-                speed: settings.level_speeds[player.player.level as usize - 1].0 * 0.5,
-                kind: FlyingUnitKind::SpaceWarship
-            },
-            SpaceWarship
-        ));
+            if !warship.cannon && cx < warship.cannon_dist {
+                warship.cannon = true;
+            }
+            if !gun_fired {
+                if warship.cannon {
+                    let texture = assets.load("images/flame_cannon.png");
+                    let pos = warship.cannon_pos;
+                    commands.spawn((
+                        DespawnOnExit(GameState::Gaming),
+                        Sprite {
+                            image: texture,
+                            image_mode: SpriteImageMode::Auto,
+                            color: Color::WHITE,
+                            ..default()
+                        },
+                        Transform::from_translation(Vec3::new(cx + pos.x,cy + pos.y,1.0))
+                            .with_scale(Vec3::splat(FIGHTER_JET_SCALE) * 2.),
+                        Flame { hurt: 5, speed: settings.flame_speed * 0.8 }
+                    ));
+                }
+                warship.fired = false;
+                warship.timer = Timer::from_seconds(
+                    settings.warship_fire_interval[player.player.level as usize - 1],
+                    TimerMode::Repeating
+                );
+            }
+        }
     }
 }
 
@@ -782,15 +791,21 @@ pub fn switch_checkpoint_state(
     mut next_state: ResMut<NextState<PlayState>>,
     mut timer: ResMut<CheckpointTimer>,
     letters: Query<Entity, With<WarshipLetter>>,
-    indicator: Single<Entity, With<WarshipLetterPos>>,
+    flames: Query<Entity, With<Flame>>,
+    indicator: Single<Entity, With<WarshipLetterArrow>>,
     time: Res<Time>
 ) {
     if timer.0.tick(time.delta()).is_finished() {
         commands.remove_resource::<CheckpointTimer>();
 
+        for entity in flames.iter() {
+            commands.entity(entity).despawn();
+        }
+
         for entity in letters.iter() {
             commands.entity(entity).despawn();
         }
+
         commands.entity(*indicator).despawn();
 
         next_state.set(PlayState::Checkpoint);

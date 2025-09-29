@@ -1,5 +1,5 @@
 use bevy::color::Color;
-use bevy::prelude::{Component, Deref, DerefMut, Entity, Event, Resource, Timer};
+use bevy::prelude::{Component, Deref, DerefMut, Entity, Event, Resource, Timer, Vec2};
 use crate::gaming::spawn::{AircraftSpawnState, BombSpawnState, HealthPackSpawnState, ShieldSpawnState};
 use crate::PlayState;
 
@@ -77,7 +77,7 @@ pub enum FlyingUnitKind {
     Bomb,
     Shield,
     HealthPack,
-    SpaceWarship
+    Warship
 }
 
 #[derive(Component)]
@@ -161,6 +161,7 @@ pub struct Missile {
 /// 敌机发射的火焰武器
 #[derive(Component)]
 pub struct Flame {
+    pub hurt: u16,
     pub speed: f32
 }
 
@@ -191,16 +192,20 @@ pub struct SpaceWarshipTimer(pub Timer);
 pub struct GameSaveTimer(pub Timer);
 
 #[derive(Component)]
-pub struct SpaceWarship;
-
-pub const SPACE_WARSHIP_SIZE: f32 = 1300.;
+pub struct SpaceWarship {
+    pub timer: Timer,
+    pub fired: bool,
+    pub gun_count: usize,
+    pub gun_state: [bool; 12],
+    pub gun_pos: [Vec2; 12],
+    pub gun_dist: [f32; 5],
+    pub cannon: bool,
+    pub cannon_pos: Vec2,
+    pub cannon_dist: f32,
+}
 
 #[derive(Component)]
-pub struct WarshipLetter {
-    pub letter: char,
-    pub index: usize,
-    pub destroyed: bool,
-}
+pub struct WarshipLetter(pub usize);
 
 #[derive(Resource, Default)]
 pub struct WarshipSentence {
@@ -209,7 +214,7 @@ pub struct WarshipSentence {
 }
 
 #[derive(Component)]
-pub struct WarshipLetterPos;
+pub struct WarshipLetterArrow;
 
-const WARSHIP_WIDTH: f32 = 1305.;
-const WARSHIP_HEIGHT: f32 = 734.;
+pub const WARSHIP_WIDTH: f32 = 1036.;
+pub const WARSHIP_HEIGHT: f32 = 362.;

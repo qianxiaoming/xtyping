@@ -285,6 +285,7 @@ pub fn update_player_status(
         }
     }
     if player.health == 0 {
+        commands.remove_resource::<WarshipSentence>();
         commands.remove_resource::<CheckpointTimer>();
         for entity in flames.iter() {
             commands.entity(entity).despawn();
@@ -725,7 +726,9 @@ pub fn warship_fires(
                 return;
             }
             warship.gun_state = [false; 12];
-            warship.timer = Timer::from_seconds(settings.warship_gun_interval, TimerMode::Repeating);
+            warship.timer = Timer::from_seconds(
+                settings.warship_gun_interval[player.player.level as usize - 1],
+                TimerMode::Repeating);
             warship.fired = true;
         } else {
             let mut gun_fired = false;

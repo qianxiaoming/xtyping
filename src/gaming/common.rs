@@ -66,7 +66,7 @@ pub const FIGHTER_JET_SIZE: f32 = 300.;
 pub const TARGET_LETTER_SIZE: f32 = 32.;
 pub const TARGET_LETTER_COLOR: Color = Color::srgb_u8(88, 251, 254);
 
-pub const CHECKPOINT_LETTER_SIZE: f32 = 52.;
+pub const CHECKPOINT_LETTER_SIZE: f32 = 50.;
 pub const CHECKPOINT_LETTER_WAITING: Color = Color::srgb_u8(245, 53, 53);
 pub const CHECKPOINT_LETTER_TARGET: Color = Color::srgb_u8(245, 245, 53);
 pub const CHECKPOINT_LETTER_DESTROYED: Color = Color::srgb_u8(97, 97, 97);

@@ -146,12 +146,14 @@ struct ExplosionTexture {
 struct GameSettings {
     // 不同用户级别对应的字母
     pub level_letters: Vec<Vec<char>>,
+    // 不同用户级别对应的战舰句子
+    pub level_sentences: Vec<Vec<String>>,
     // 不同用户级别对应的飞行速度区间
     pub level_speeds: Vec<(f32, f32)>,
     // 不同级别用户战舰的发射时间间隔
     pub warship_fire_interval: Vec<f32>,
     // 战舰单个火炮发射间隔
-    pub warship_gun_interval: f32,
+    pub warship_gun_interval: Vec<f32>,
     // 升级的分数
     pub upgrade_scores: Vec<u32>,
     // 不同用户级别每一关的敌机数量
@@ -201,12 +203,52 @@ impl Default for GameSettings {
             level_letters.push(current.clone());
         }
 
+        let level_sentences = vec![
+            vec![
+                "well done".to_owned(),
+                "excuse me".to_owned(),
+                "my best friend".to_owned(),
+                "be quiet".to_owned(),
+                "listen carefully".to_owned(),
+            ],
+            vec![
+                "I like apples and bananas".to_owned(),
+                "The sun is bright today".to_owned(),
+                "My cat is under the chair".to_owned(),
+                "We run fast in the park".to_owned(),
+                "She has a yellow dress".to_owned(),
+            ],
+            vec![
+                "The teacher reads a story to us".to_owned(),
+                "We play football after school today".to_owned(),
+                "He drinks milk every morning".to_owned(),
+                "The dog sleeps on the sofa".to_owned(),
+                "They are singing in the classroom".to_owned(),
+            ],
+            vec![
+                "The little prince lives on a small star".to_owned(),
+                "The little bird sings sweetly in the morning".to_owned(),
+                "A magic flower blooms only under the moon".to_owned(),
+                "The golden sun rises slowly over the ocean".to_owned(),
+                "My mother cooks delicious food for me".to_owned(),
+            ],
+            vec![
+                "The teacher tells us a funny story".to_owned(),
+                "I like to draw animals and flowers".to_owned(),
+                "He is happy to see his friends".to_owned(),
+                "The shining stars brighten the dark night sky".to_owned(),
+                "A small candle lights the entire dark room".to_owned(),
+            ],
+        ];
+
         GameSettings {
             level_letters,
+            level_sentences,
             level_speeds: vec![(50., 80.),(80., 110.),(120., 150.),(150., 180.),(180., 220.)],
             warship_fire_interval: vec![4., 3., 2., 1., 0.5],
+            warship_gun_interval: vec![0.3, 0.2, 0.15, 0.08, 0.04],
             upgrade_scores: vec![2000, 10000, 28000, 50000],
-            aircraft_count: vec![3, 300, 400, 500, 600],
+            aircraft_count: vec![150, 300, 400, 500, 600],
             aircraft_intervals: vec![(3., 5.),(1.5, 3.),(1., 1.5),(0.8, 1.),(0.3, 1.)],
             firing_distance: 200.,
             bomb_intervals: vec![(150., 300.),(250., 350.),(300., 450.),(400., 500.),(450., 600.)],
@@ -215,7 +257,6 @@ impl Default for GameSettings {
             shield_active_time: 30.,
             missile_speed: 1000.,
             flame_speed: 500.,
-            warship_gun_interval: 0.3,
         }
     }
 }

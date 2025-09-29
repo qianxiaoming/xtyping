@@ -265,10 +265,13 @@ pub fn spawn_space_warship(
             commands.entity(entity).despawn();
         }
 
-        let sentence: Vec<_>= "Hello world".chars().collect();
-        let letter_count = sentence.len() as f32;
+        let mut rng = rand::rng();
+        let level_index = player.player.level as usize - 1;
+        let sentence_index = rng.random_range(0..settings.level_sentences[level_index].len());
+        let sentence_chars: Vec<_>= settings.level_sentences[level_index][sentence_index].chars().collect();
+        let letter_count = sentence_chars.len() as f32;
         let mut index = 0_usize;
-        let mut letters = sentence.clone();
+        let mut letters = sentence_chars.clone();
         letters.retain(|c| *c != ' ');
         commands.insert_resource(
             WarshipSentence{
@@ -281,7 +284,7 @@ pub fn spawn_space_warship(
         let start_x = -(letter_count * CHECKPOINT_LETTER_SIZE * font_ratio / 2.);
         let start_y = -window.height() / 2. + CHECKPOINT_LETTER_SIZE / 2. + 5.;
         let mut x = start_x;
-        for letter in &sentence {
+        for letter in &sentence_chars {
             if *letter != ' ' {
                 commands.spawn((
                     DespawnOnExit(GameState::Gaming),
@@ -322,7 +325,7 @@ pub fn spawn_space_warship(
 
         // 加载关卡boss
         let half_window = window.width() / 2.;
-        let speed = settings.level_speeds[player.player.level as usize - 1].0 * 0.45;
+        let speed = settings.level_speeds[level_index].0 * 0.45;
         let texture = assets.load("images/space-warship.png");
         commands.spawn((
             DespawnOnExit(GameState::Gaming),
@@ -332,10 +335,10 @@ pub fn spawn_space_warship(
                 color: Color::WHITE,
                 ..default()
             },
-            Transform::from_translation(Vec3::new((window.width() + WARSHIP_WIDTH) / 2. - 100., 0., 0.)),
+            Transform::from_translation(Vec3::new((window.width() + WARSHIP_WIDTH) / 2. - 160., 0., 0.)),
             FlyingUnit {
                 route: 0,
-                letter: sentence[0],
+                letter: sentence_chars[0],
                 speed,
                 kind: FlyingUnitKind::Warship
             },

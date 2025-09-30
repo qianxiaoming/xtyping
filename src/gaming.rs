@@ -28,6 +28,7 @@ pub fn play_game_plugin(app: &mut App) {
         .init_resource::<ShieldSpawnState>()
         .init_resource::<HealthPackSpawnState>()
         .init_resource::<FlyingUnitCounter>()
+        .init_resource::<SpeedFactor>()
         .insert_resource(GameSaveTimer(Timer::from_seconds(10.0, TimerMode::Repeating)))
         .add_observer(playing::on_bomb_exploded)
         .add_observer(playing::on_update_health_bar)
@@ -273,21 +274,21 @@ fn playing_game_setup(mut commands: Commands,
     let state = &mut bomb_spawn_state.as_mut().0;
     state.speeds = game_settings.level_speeds.clone();
     state.intervals = game_settings.bomb_intervals.clone();
-    state.spawn = true;
+    //state.spawn = true;
 
     // 初始化护盾的生成参数
     *shield_spawn_state = ShieldSpawnState::default();
     let state = &mut shield_spawn_state.as_mut().0;
     state.speeds = game_settings.level_speeds.clone();
     state.intervals = game_settings.shield_intervals.clone();
-    state.spawn = true;
+    //state.spawn = true;
 
     // 初始化血包的生成参数
     *health_pack_spawn_state = HealthPackSpawnState::default();
     let state = &mut health_pack_spawn_state.as_mut().0;
     state.speeds = game_settings.level_speeds.clone();
     state.intervals = game_settings.health_pack_intervals.clone();
-    state.spawn = true;
+    //state.spawn = true;
 
     *flying_unit_counter = FlyingUnitCounter::default();
 
@@ -464,7 +465,7 @@ pub fn update_game_time(
 
 fn compute_route_count(window_height: f32) -> usize {
     let total_height = window_height - GAME_INFO_AREA_HEIGHT - GAME_INFO_AREA_MARGIN;
-    let mut route_count = (total_height / DEFAULT_ROUTE_HEIGHT) as usize;
+    let route_count = (total_height / DEFAULT_ROUTE_HEIGHT) as usize;
     if route_count > MAX_ROUTE_COUNT { MAX_ROUTE_COUNT } else { route_count }
 }
 

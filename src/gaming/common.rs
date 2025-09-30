@@ -155,7 +155,6 @@ pub struct Missile {
     pub speed: f32,
     pub target: Entity,
     pub letter: char,
-    pub kind: FlyingUnitKind
 }
 
 /// 敌机发射的火焰武器
@@ -218,3 +217,20 @@ pub struct WarshipLetterArrow;
 
 pub const WARSHIP_WIDTH: f32 = 1036.;
 pub const WARSHIP_HEIGHT: f32 = 362.;
+
+#[derive(Resource)]
+pub struct SpeedFactor {
+    // 敌机的飞行速度加速比
+    pub speed_factor: f32,
+    // 加速比修改的次数
+    pub factor_changes: i32,
+}
+
+impl Default for SpeedFactor {
+    fn default() -> SpeedFactor {
+        SpeedFactor {
+            speed_factor: 1.,
+            factor_changes: 0
+        }
+    }
+}

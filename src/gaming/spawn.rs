@@ -39,16 +39,19 @@ pub struct AircraftSpawnState {
     pub count: usize,
 }
 
-pub fn spawn_aircraft(mut commands: Commands,
-                      mut state: ResMut<AircraftSpawnState>,
-                      mut game_routes: ResMut<GameRoutes>,
-                      mut game_letters: ResMut<GameLetters>,
-                      game_player: Res<GamePlayer>,
-                      time: Res<Time>,
-                      asset_server: Res<AssetServer>,
-                      game_settings: Res<GameSettings>,
-                      game_fonts: Res<GameFonts>,
-                      window: Single<&Window>) {
+pub fn spawn_aircraft(
+    mut commands: Commands,
+    mut state: ResMut<AircraftSpawnState>,
+    mut game_routes: ResMut<GameRoutes>,
+    mut game_letters: ResMut<GameLetters>,
+    game_player: Res<GamePlayer>,
+    speed_factor: Res<SpeedFactor>,
+    time: Res<Time>,
+    asset_server: Res<AssetServer>,
+    game_settings: Res<GameSettings>,
+    game_fonts: Res<GameFonts>,
+    window: Single<&Window>
+) {
     if state.timer.tick(time.delta()).just_finished() {
         // 达到了创建新敌机的时间
         let level = game_player.player.level as usize;
@@ -73,7 +76,7 @@ pub fn spawn_aircraft(mut commands: Commands,
             FlyingUnit {
                 route: route.id,
                 letter,
-                speed: rng.random_range(speed.0..=speed.1),
+                speed: rng.random_range(speed.0..=speed.1) * speed_factor.speed_factor,
                 kind: FlyingUnitKind::Aircraft
             },
             Aircraft::default(),

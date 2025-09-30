@@ -18,6 +18,7 @@ pub fn playground_setup(
     window: Single<&Window>,
     last_state: Option<Res<LastPlayState>>,
 ) {
+    commands.insert_resource(SpeedFactor::default());
     if last_state.is_some() {
         commands.remove_resource::<LastPlayState>();
         return;
@@ -147,7 +148,7 @@ pub fn move_flying_unit(
                             },
                             Transform::from_translation(Vec3::new(pos.x, pos.y + pos_y,0.))
                                 .with_scale(Vec3::splat(FIGHTER_JET_SCALE)),
-                            Flame { hurt: 1, speed: unit.speed * 1.5 }
+                            Flame { hurt: 1, speed: unit.speed * 1.6 }
                         )).id();
                         ac.flame = Some(flame);
                     }
@@ -176,12 +177,23 @@ pub fn animate_miss_text(
 
 pub fn on_keyboard_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut speed_factor: ResMut<SpeedFactor>,
     mut next_state: ResMut<NextState<PlayState>>
 ) {
     if keyboard_input.just_released(KeyCode::Space) {
         next_state.set(PlayState::Paused);
     } else if keyboard_input.just_released(KeyCode::Escape) {
         next_state.set(PlayState::Exiting);
+    } else if keyboard_input.just_released(KeyCode::ArrowUp) {
+        if speed_factor.factor_changes < 5 {
+            speed_factor.factor_changes += 1;
+        }
+        speed_factor.speed_factor = 1.25_f32.powi(speed_factor.factor_changes);
+    } else if keyboard_input.just_released(KeyCode::ArrowDown) {
+        if speed_factor.factor_changes > 0 {
+            speed_factor.factor_changes -= 1;
+        }
+        speed_factor.speed_factor = 1.25_f32.powi(speed_factor.factor_changes);
     }
 }
 
@@ -221,7 +233,6 @@ pub fn on_player_char_input(
                         speed: game_settings.missile_speed,
                         target: entity,
                         letter: c.to_ascii_uppercase(),
-                        kind: unit.kind,
                     }
                 ));
             }
@@ -429,7 +440,7 @@ pub fn update_missiles_for_warship(
     mut player: ResMut<GamePlayer>,
     mut missiles: Query<(Entity, &Missile, &mut Transform), Without<FlyingUnit>>,
     mut sentence: ResMut<WarshipSentence>,
-    mut letters: Query<(&Transform, &WarshipLetter, &mut TextColor), (With<WarshipLetter>, Without<Missile>)>,
+    mut letters: Query<(&WarshipLetter, &mut TextColor), (With<WarshipLetter>, Without<Missile>)>,
     warship: Single<(&mut FlyingUnit, &Transform), (With<SpaceWarship>, Without<Missile>, Without<WarshipLetter>)>,
     time: Res<Time>,
     explosion: ResMut<ExplosionTexture>,
@@ -453,7 +464,7 @@ pub fn update_missiles_for_warship(
             }
             if sentence.current == sentence.letters.len() - 1 {
                 // 所有字符都被击毁，玩家通关了
-                for (_, letter, mut color) in &mut letters {
+                for (letter, mut color) in &mut letters {
                     if letter.0 == sentence.current {
                         *color = TextColor(CHECKPOINT_LETTER_DESTROYED);
                         break;
@@ -466,7 +477,7 @@ pub fn update_missiles_for_warship(
                 commands.insert_resource(CheckpointTimer(Timer::from_seconds(1., TimerMode::Once)));
             } else {
                 // 调整给玩家看的字符列表
-                for (transform, letter, mut color) in &mut letters {
+                for (letter, mut color) in &mut letters {
                     if letter.0 == sentence.current {
                         *color = TextColor(CHECKPOINT_LETTER_DESTROYED);
                     } else if letter.0 == sentence.current + 1 {
@@ -591,7 +602,6 @@ pub fn on_bomb_exploded(
                 speed: game_settings.missile_speed,
                 target: entity,
                 letter: unit.letter,
-                kind: FlyingUnitKind::Aircraft,
             }
         ));
     }
@@ -697,13 +707,13 @@ pub fn equipment_effect(
 
 pub fn warship_fires(
     mut commands: Commands,
-    warship: Single<(&mut SpaceWarship, &FlyingUnit, &Transform)>,
+    warship: Single<(&mut SpaceWarship, &Transform)>,
     time: Res<Time>,
     settings: Res<GameSettings>,
     player: Res<GamePlayer>,
     assets: Res<AssetServer>
 ) {
-    let (mut warship, unit, transform) = warship.into_inner();
+    let (mut warship, transform) = warship.into_inner();
     let cx = transform.translation.x;
     let cy = transform.translation.y;
     if warship.timer.tick(time.delta()).just_finished() {
@@ -735,10 +745,13 @@ pub fn warship_fires(
             let mut gun = 0_usize;
             let mut rng = rand::rng();
             // 随机选择一个发射
-            while !gun_fired && (&warship.gun_state[..warship.gun_count]).iter().any(|s| !*s) {
-                gun = rng.random_range(0..warship.gun_count);
-                if !warship.gun_state[gun] {
-                    gun_fired = true;
+            for _ in 0..100 {
+                if !gun_fired && (&warship.gun_state[..warship.gun_count]).iter().any(|s| !*s) {
+                    gun = rng.random_range(0..warship.gun_count);
+                    if !warship.gun_state[gun] {
+                        gun_fired = true;
+                        break;
+                    }
                 }
             }
             if gun_fired {

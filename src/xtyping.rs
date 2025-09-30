@@ -6,7 +6,9 @@ mod register;
 mod gaming;
 mod ui;
 
-use std::path::PathBuf;
+use std::{fs, io};
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use rand::prelude::SliceRandom;
 use bevy::prelude::*;
 use bevy::input_focus::InputFocus;
@@ -17,6 +19,8 @@ const GAME_APP_TITLE: &str = "超级打字练习";
 const GAME_APP_NAME: &str = "xtyping";
 
 const PLAYERS_DATA_FILE: &str = "players.json";
+
+const WARSHIP_SENTENCES_FILE: &str = "sentences.json";
 
 fn main() {
     App::new()
@@ -142,6 +146,38 @@ struct ExplosionTexture {
     pub layout: Handle<TextureAtlasLayout>
 }
 
+fn get_app_data_dir(app_name: &str) -> PathBuf {
+    let mut base_dir = dirs::data_dir().expect("无法获取用户数据目录");
+    base_dir.push(app_name);
+
+    fs::create_dir_all(&base_dir).expect("创建应用数据目录失败");
+    base_dir
+}
+
+fn sync_sentences_with_file(
+    data: &mut Vec<Vec<String>>,
+    file_path: &Path,
+) -> io::Result<()> {
+    if !file_path.exists() {
+        let json = serde_json::to_string_pretty(&data)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        let mut file = fs::File::create(file_path)?;
+        file.write_all(json.as_bytes())?;
+    } else {
+        let content = fs::read_to_string(file_path)?;
+        match serde_json::from_str::<Vec<Vec<String>>>(&content) {
+            Ok(parsed) => {
+                *data = parsed; // 替换原内容
+            }
+            Err(e) => {
+                error!("解析英语句子资源文件是比啊：{}", e);
+            }
+        }
+    }
+
+    Ok(())
+}
+
 #[derive(Resource)]
 struct GameSettings {
     // 不同用户级别对应的字母
@@ -160,8 +196,6 @@ struct GameSettings {
     pub aircraft_count: Vec<usize>,
     // 敌机出现的时间间隔
     pub aircraft_intervals: Vec<(f32, f32)>,
-    // 敌机的开火距离
-    pub firing_distance: f32,
     // 炸弹出现的时间间隔
     pub bomb_intervals: Vec<(f32, f32)>,
     // 护盾出现的时间间隔
@@ -203,7 +237,7 @@ impl Default for GameSettings {
             level_letters.push(current.clone());
         }
 
-        let level_sentences = vec![
+        let mut level_sentences = vec![
             vec![
                 "well done".to_owned(),
                 "excuse me".to_owned(),
@@ -240,6 +274,9 @@ impl Default for GameSettings {
                 "A small candle lights the entire dark room".to_owned(),
             ],
         ];
+        let mut sentence_file = get_app_data_dir(GAME_APP_NAME);
+        sentence_file.push(WARSHIP_SENTENCES_FILE);
+        let _ = sync_sentences_with_file(&mut level_sentences, sentence_file.as_path());
 
         GameSettings {
             level_letters,
@@ -250,10 +287,9 @@ impl Default for GameSettings {
             upgrade_scores: vec![2000, 10000, 28000, 50000],
             aircraft_count: vec![150, 300, 400, 500, 600],
             aircraft_intervals: vec![(3., 5.),(1.5, 3.),(1., 1.5),(0.8, 1.),(0.3, 1.)],
-            firing_distance: 200.,
-            bomb_intervals: vec![(150., 300.),(250., 350.),(300., 450.),(400., 500.),(450., 600.)],
-            shield_intervals: vec![(200., 250.),(250., 300.),(300., 450.),(450., 500.),(500., 550.)],
-            health_pack_intervals: vec![(300., 400.),(400., 500.),(500., 600.),(600., 700.),(600., 700.)],
+            bomb_intervals: vec![(150., 200.),(200., 250.),(250., 300.),(300., 400.),(400., 500.)],
+            shield_intervals: vec![(150., 200.),(200., 250.),(250., 300.),(300., 400.),(400., 500.)],
+            health_pack_intervals: vec![(150., 200.),(200., 250.),(250., 300.),(300., 400.),(400., 500.)],
             shield_active_time: 30.,
             missile_speed: 1000.,
             flame_speed: 500.,
@@ -263,14 +299,6 @@ impl Default for GameSettings {
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
-}
-
-fn get_app_data_dir(app_name: &str) -> PathBuf {
-    let mut base_dir = dirs::data_dir().expect("无法获取用户数据目录");
-    base_dir.push(app_name);
-
-    std::fs::create_dir_all(&base_dir).expect("创建应用数据目录失败");
-    base_dir
 }
 
 /// 初始化全局的字体、用户以及图片资源
@@ -297,8 +325,8 @@ fn init_resources(
 
     let mut data_file = get_app_data_dir(GAME_APP_NAME);
     data_file.push(PLAYERS_DATA_FILE);
-    if std::path::Path::new(&data_file).exists() {
-        std::fs::read_to_string(&data_file)
+    if Path::new(&data_file).exists() {
+        fs::read_to_string(&data_file)
             .and_then(|data| serde_json::from_str::<Vec<Player>>(&data).map_err(|err| err.into()))
             .map(|data| players.0.extend(data))
             .unwrap_or_else(|err| error!("Failed to parse player data: {}", err));
@@ -313,7 +341,7 @@ fn save_game_users(players: &Players) {
     if let Ok(json) = serde_json::to_string_pretty(&players.0) {
         let mut data_file = get_app_data_dir(GAME_APP_NAME);
         data_file.push(PLAYERS_DATA_FILE);
-        if let Err(e) = std::fs::write(&data_file, json.as_bytes()) {
+        if let Err(e) = fs::write(&data_file, json.as_bytes()) {
             error!("Failed to save player data: {}", e);
         }
     }

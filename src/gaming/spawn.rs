@@ -98,7 +98,10 @@ pub fn spawn_aircraft(
         if state.count < game_settings.aircraft_count[game_player.player.level as usize - 1] {
             let range = game_settings.aircraft_intervals[level - 1];
             let next_duration = rng.random_range(range.0..=range.1);
-            state.timer = Timer::from_seconds(next_duration, TimerMode::Once);
+            state.timer = Timer::from_seconds(
+                next_duration/1.15_f32.powi(speed_factor.factor_changes),
+                TimerMode::Once
+            );
         }
     }
 }
@@ -371,6 +374,7 @@ pub fn spawn_space_warship(
                     half_window + WARSHIP_WIDTH / 2. - 928.,
                     half_window + WARSHIP_WIDTH / 2. - 990.
                 ],
+                gun_fired: 0,
                 cannon: false,
                 cannon_pos: Vec2::new(661. - WARSHIP_WIDTH / 2., 0.),
                 cannon_dist: half_window + WARSHIP_WIDTH / 2. - 792.,

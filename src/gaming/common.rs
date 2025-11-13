@@ -198,6 +198,7 @@ pub struct SpaceWarship {
     pub gun_state: [bool; 12],
     pub gun_pos: [Vec2; 12],
     pub gun_dist: [f32; 5],
+    pub gun_fired: i32,
     pub cannon: bool,
     pub cannon_pos: Vec2,
     pub cannon_dist: f32,

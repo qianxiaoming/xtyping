@@ -1,19 +1,20 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![doc = include_str!("../README.md")]
 
-mod startup;
-mod widgets;
-mod register;
 mod gaming;
+mod register;
+mod startup;
 mod ui;
+mod widgets;
 
-use std::{fs, io};
+use bevy::input_focus::InputFocus;
+use bevy::prelude::*;
+use bevy::window::WindowPlugin;
+use rand::prelude::SliceRandom;
+use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use rand::prelude::SliceRandom;
-use bevy::prelude::*;
-use bevy::input_focus::InputFocus;
-use bevy::window::WindowPlugin;
-use serde::{Deserialize, Serialize};
+use std::{fs, io};
 
 const GAME_APP_TITLE: &str = "超级打字练习";
 const GAME_APP_NAME: &str = "xtyping";
@@ -44,7 +45,7 @@ fn main() {
             startup::startup_plugin,
             register::new_player_plugin,
             gaming::play_game_plugin,
-            widgets::widgets_plugin
+            widgets::widgets_plugin,
         ))
         .run();
 }
@@ -56,7 +57,7 @@ enum GameState {
     Startup,
     Register,
     Gaming,
-    Restart
+    Restart,
 }
 
 /// 玩游戏过程中的可能状态
@@ -65,13 +66,13 @@ enum GameState {
 #[states(scoped_entities)]
 enum PlayState {
     #[default]
-    Splash,    // 初始提示
-    Playing,   // 玩家交互
-    Paused,    // 暂停游戏
-    Exiting,   // 确认退出
+    Splash, // 初始提示
+    Playing,    // 玩家交互
+    Paused,     // 暂停游戏
+    Exiting,    // 确认退出
     Checkpoint, // 游戏过关
-    Upgrading, // 升级祝贺
-    Failed     // 玩家失败
+    Upgrading,  // 升级祝贺
+    Failed,     // 玩家失败
 }
 
 #[derive(Resource, Default)]
@@ -88,7 +89,7 @@ struct Player {
     name: String,
     avatar: String,
     score: u32,
-    level: u32
+    level: u32,
 }
 
 #[derive(Deserialize, Resource, Default)]
@@ -137,13 +138,13 @@ struct GameRoutes {
 #[derive(Resource, Default)]
 struct GameLetters {
     pub candidate_letters: Vec<char>,
-    pub choosed_letters: Vec<char>
+    pub choosed_letters: Vec<char>,
 }
 
 #[derive(Resource, Default)]
 struct ExplosionTexture {
     pub texture: Handle<Image>,
-    pub layout: Handle<TextureAtlasLayout>
+    pub layout: Handle<TextureAtlasLayout>,
 }
 
 fn get_app_data_dir(app_name: &str) -> PathBuf {
@@ -154,10 +155,7 @@ fn get_app_data_dir(app_name: &str) -> PathBuf {
     base_dir
 }
 
-fn sync_sentences_with_file(
-    data: &mut Vec<Vec<String>>,
-    file_path: &Path,
-) -> io::Result<()> {
+fn sync_sentences_with_file(data: &mut Vec<Vec<String>>, file_path: &Path) -> io::Result<()> {
     if !file_path.exists() {
         let json = serde_json::to_string_pretty(&data)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
@@ -217,11 +215,11 @@ impl Default for GameSettings {
             "1234567890",
             "+-*/:=%,.;",
             "?\"{}#!()",
-            "[]<>@_|'"
+            "[]<>@_|'",
         ]
-            .iter()
-            .map(|s| s.chars().collect())
-            .collect();
+        .iter()
+        .map(|s| s.chars().collect())
+        .collect();
 
         let mut level_letters: Vec<Vec<char>> = Vec::with_capacity(MAX_PLAYER_LEVELS as usize);
         let mut current = Vec::new();
@@ -244,13 +242,23 @@ impl Default for GameSettings {
                 "my best friend".to_owned(),
                 "be quiet".to_owned(),
                 "listen carefully".to_owned(),
+                "Good morning".to_owned(),
+                "Be happy".to_owned(),
+                "Thank you".to_owned(),
+                "Hello bird".to_owned(),
+                "Come here".to_owned(),
             ],
             vec![
-                "I like apples and bananas".to_owned(),
+                "Knowledge is power".to_owned(),
                 "The sun is bright today".to_owned(),
                 "My cat is under the chair".to_owned(),
                 "We run fast in the park".to_owned(),
-                "She has a yellow dress".to_owned(),
+                "Kind words cost nothing".to_owned(),
+                "The stars shine in the sky".to_owned(),
+                "My dog waits at the gate".to_owned(),
+                "We play games after school".to_owned(),
+                "Her smile makes me happy".to_owned(),
+                "Hope is a waking dream".to_owned(),
             ],
             vec![
                 "The teacher reads a story to us".to_owned(),
@@ -258,6 +266,11 @@ impl Default for GameSettings {
                 "He drinks milk every morning".to_owned(),
                 "The dog sleeps on the sofa".to_owned(),
                 "They are singing in the classroom".to_owned(),
+                "The gentle wind moves the green leaves".to_owned(),
+                "We walk together under the blue sky".to_owned(),
+                "My little brother laughs in the garden".to_owned(),
+                "The moon shines softly on the lake".to_owned(),
+                "I write a story about my dream".to_owned(),
             ],
             vec![
                 "The little prince lives on a small star".to_owned(),
@@ -265,13 +278,23 @@ impl Default for GameSettings {
                 "A magic flower blooms only under the moon".to_owned(),
                 "The golden sun rises slowly over the ocean".to_owned(),
                 "My mother cooks delicious food for me".to_owned(),
+                "Where there is love, there is life".to_owned(),
+                "Smile, and the world smiles with you".to_owned(),
+                "Honesty is the best policy".to_owned(),
+                "A gentle word can make a heavy heart light".to_owned(),
+                "Stars can’t shine without darkness.".to_owned(),
             ],
             vec![
                 "The teacher tells us a funny story".to_owned(),
                 "I like to draw animals and flowers".to_owned(),
-                "He is happy to see his friends".to_owned(),
+                "The world is brighter when you choose to care".to_owned(),
                 "The shining stars brighten the dark night sky".to_owned(),
                 "A small candle lights the entire dark room".to_owned(),
+                "Light follows the darkest night".to_owned(),
+                "Every flower blooms in its own time".to_owned(),
+                "The morning sun paints the sky with golden light".to_owned(),
+                "Kind hearts are the gardens where love grows".to_owned(),
+                "Dreams are stars that guide us through the night".to_owned(),
             ],
         ];
         let mut sentence_file = get_app_data_dir(GAME_APP_NAME);
@@ -281,15 +304,39 @@ impl Default for GameSettings {
         GameSettings {
             level_letters,
             level_sentences,
-            level_speeds: vec![(50., 80.),(80., 110.),(120., 150.),(150., 180.),(180., 220.)],
+            level_speeds: vec![
+                (50., 80.),
+                (80., 110.),
+                (120., 150.),
+                (150., 180.),
+                (180., 220.),
+            ],
             warship_fire_interval: vec![4., 3., 2., 1., 0.5],
             warship_gun_interval: vec![0.3, 0.2, 0.15, 0.08, 0.04],
             upgrade_scores: vec![2000, 10000, 28000, 50000],
             aircraft_count: vec![150, 300, 400, 500, 600],
-            aircraft_intervals: vec![(3., 5.),(1.5, 3.),(1., 1.5),(0.8, 1.),(0.3, 1.)],
-            bomb_intervals: vec![(150., 200.),(200., 250.),(250., 300.),(300., 400.),(400., 500.)],
-            shield_intervals: vec![(150., 200.),(200., 250.),(250., 300.),(300., 400.),(400., 500.)],
-            health_pack_intervals: vec![(150., 200.),(200., 250.),(250., 300.),(300., 400.),(400., 500.)],
+            aircraft_intervals: vec![(3., 5.), (1.5, 3.), (1., 1.5), (0.8, 1.), (0.3, 1.)],
+            bomb_intervals: vec![
+                (150., 200.),
+                (200., 250.),
+                (250., 300.),
+                (300., 400.),
+                (400., 500.),
+            ],
+            shield_intervals: vec![
+                (150., 200.),
+                (200., 250.),
+                (250., 300.),
+                (300., 400.),
+                (400., 500.),
+            ],
+            health_pack_intervals: vec![
+                (150., 200.),
+                (200., 250.),
+                (250., 300.),
+                (300., 400.),
+                (400., 500.),
+            ],
             shield_active_time: 30.,
             missile_speed: 1000.,
             flame_speed: 500.,
@@ -319,9 +366,13 @@ fn init_resources(
     widgets::UI_BUTTON_FONT.set(fonts.ui_font.clone()).ok();
 
     texture.texture = asset_server.load("images/explosion.png");
-    texture.layout = texture_atlas_layouts.add(
-        TextureAtlasLayout::from_grid(UVec2::new(150, 129), 3, 3, None, None)
-    );
+    texture.layout = texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
+        UVec2::new(150, 129),
+        3,
+        3,
+        None,
+        None,
+    ));
 
     let mut data_file = get_app_data_dir(GAME_APP_NAME);
     data_file.push(PLAYERS_DATA_FILE);

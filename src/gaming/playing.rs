@@ -740,17 +740,21 @@ pub fn warship_fires(
                 settings.warship_gun_interval[player.player.level as usize - 1],
                 TimerMode::Repeating);
             warship.fired = true;
+            warship.gun_fired = 0;
         } else {
             let mut gun_fired = false;
             let mut gun = 0_usize;
             let mut rng = rand::rng();
             // 随机选择一个发射
-            for _ in 0..100 {
-                if !gun_fired && (&warship.gun_state[..warship.gun_count]).iter().any(|s| !*s) {
-                    gun = rng.random_range(0..warship.gun_count);
-                    if !warship.gun_state[gun] {
-                        gun_fired = true;
-                        break;
+            if warship.gun_fired < 5 {
+                for _ in 0..100 {
+                    if !gun_fired && (&warship.gun_state[..warship.gun_count]).iter().any(|s| !*s) {
+                        gun = rng.random_range(0..warship.gun_count);
+                        if !warship.gun_state[gun] {
+                            gun_fired = true;
+                            warship.gun_fired += 1;
+                            break;
+                        }
                     }
                 }
             }

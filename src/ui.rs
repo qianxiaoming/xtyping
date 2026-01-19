@@ -84,7 +84,7 @@ pub fn spawn_game_title(builder: &mut ChildSpawnerCommands,
         });
     if signature {
         builder.spawn((
-            Text::new("v0.1  kyleqian@gmail.com"),
+            Text::new("v0.2  kyleqian@gmail.com"),
             TextFont {
                 font: fonts.info_font.clone(),
                 font_size: INFO_FONT_SIZE,

@@ -14,16 +14,13 @@
 > **以打字练习为主，游戏只是辅助激励手段**
 
 ## 🖼️ 游戏截图
-
 <p align="center">
-  <img src="docs/image1.png" width="45%" />
-  <img src="docs/image2.png" width="45%" />
-</p>
-
-<p align="center">
-  <img src="docs/image3.png" width="30%" />
-  <img src="docs/image4.png" width="30%" />
-  <img src="docs/image5.png" width="30%" />
+  <img src="docs/image1.png"/>
+  <img src="docs/image2.png"/>
+  <img src="docs/image3.png"/>
+  <img src="docs/image4.png"/>
+  <img src="docs/image5.png"/>
+  <img src="docs/image6.png"/>
 </p>
 
 ## 🎯 游戏玩法

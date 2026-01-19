@@ -50,10 +50,10 @@ impl InputBox {
                     top: Val::Px(0.5),
                     bottom: Val::Px(3.)
                 },
+                border_radius: BorderRadius::px(5.0, 5.0, 5.0, 5.0),
                 ..default()
             },
             InputBoxBorder(size),
-            BorderRadius::px(5.0, 5.0, 5.0, 5.0),
             BorderColor {
                 top: INPUT_BOX_SIDE_COLOR,
                 left: INPUT_BOX_SIDE_COLOR,

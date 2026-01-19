@@ -70,12 +70,12 @@ impl Button {
                     width: Val::Px(size.x),
                     height: Val::Px(size.y),
                     border: UiRect::all(Val::Px(BUTTON_BORDER_WIDTH)),
+                    border_radius: corner.to_border_radius(),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..default()
                 },
                 BorderColor::all(config.border),
-                corner.to_border_radius(),
                 BackgroundColor(if enabled { config.normal } else { BUTTON_DISABLED_COLOR }),
                 config,
                 Enabled(enabled),
@@ -145,12 +145,12 @@ impl IconButton {
                     width: Val::Px(size.x),
                     height: Val::Px(size.y),
                     border: UiRect::all(Val::Px(BUTTON_BORDER_WIDTH)),
+                    border_radius: BorderRadius::all(Val::Px(5.0)),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..default()
                 },
                 BorderColor::all(border_color),
-                BorderRadius::all(Val::Px(5.0)),
                 BackgroundColor(background_color),
                 ButtonConfig {
                     normal: background_color,

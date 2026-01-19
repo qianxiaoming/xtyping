@@ -16,10 +16,10 @@ impl ModelDialog {
                     align_self: AlignSelf::Center,
                     justify_self: JustifySelf::Center,
                     border: UiRect::all(Val::Px(2.)),
+                    border_radius: BorderRadius::all(Val::Px(5.0)),
                     ..default()
                 },
                 BorderColor::all(Color::srgb_u8(43, 44, 47)),
-                BorderRadius::all(Val::Px(5.0)),
                 BackgroundColor(Color::NONE),
             )).id();
 
@@ -33,11 +33,11 @@ impl ModelDialog {
                     align_items: AlignItems::Center,
                     justify_content: JustifyContent::Start,
                     border: UiRect::all(Val::Px(3.)),
+                    border_radius: BorderRadius::all(Val::Px(5.0)),
                     padding: UiRect::all(Val::Px(10.)),
                     ..default()
                 },
                 BorderColor::all(Color::srgb_u8(76, 69, 113)),
-                BorderRadius::all(Val::Px(5.0)),
                 BackgroundColor(Color::srgb_u8(43, 44, 47)),
             )).id();
 

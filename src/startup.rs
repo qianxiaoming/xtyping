@@ -175,12 +175,12 @@ fn player_list_setup(builder: &mut ChildSpawnerCommands, players: Res<Players>, 
             border: UiRect::all(Val::Px(2.)),
             margin: UiRect::top(Val::Px(15.)),
             padding: UiRect::all(Val::Px(20.)),
+            border_radius: BorderRadius::all(Val::Px(8.0)),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Start,
             ..default()
         },
         BorderColor::all(Color::srgb_u8(76, 69, 113)),
-        BorderRadius::all(Val::Px(8.0)),
         BackgroundColor(Color::NONE),
     )).with_children(|builder| {
         let icon_size = NORMAL_FONT_SIZE + 8.;

@@ -158,20 +158,20 @@ fn playing_game_setup(mut commands: Commands,
                                 Node {
                                     width: Val::Percent(100.),
                                     height: Val::Px(5.),
+                                    border_radius: BorderRadius::MAX,
                                     flex_direction: FlexDirection::Row,
                                     ..default()
                                 },
-                                BorderRadius::MAX,
                                 BackgroundColor(Color::srgb_u8(70, 70, 70))
                             )).with_children(|builder| {
                                 builder.spawn((
                                     Node {
                                         width: Val::Percent(calculate_upgrade_percent(&game_player.player, &game_settings)),
                                         height: Val::Percent(100.),
+                                        border_radius: BorderRadius::MAX,
                                         ..default()
                                     },
                                     LevelProgress,
-                                    BorderRadius::MAX,
                                     BackgroundColor(Color::srgb_u8(70, 139, 254))
                                 ));
                             });

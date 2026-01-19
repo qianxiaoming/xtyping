@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::{Rng, random};
 use bevy::asset::AssetServer;
 use bevy::color::Color;
 use bevy::input::keyboard::{Key, KeyboardInput};
@@ -717,6 +717,7 @@ pub fn warship_fires(
     let cx = transform.translation.x;
     let cy = transform.translation.y;
     if warship.timer.tick(time.delta()).just_finished() {
+        // 根据当前战舰Boss的位置确定它能发射多少炮
         warship.gun_count = if cx > warship.gun_dist[0] {
             0
         } else if cx > warship.gun_dist[1] {
@@ -780,7 +781,8 @@ pub fn warship_fires(
                 warship.cannon = true;
             }
             if !gun_fired {
-                if warship.cannon {
+                let fire: bool = random();
+                if warship.cannon && fire {
                     let texture = assets.load("images/flame_cannon.png");
                     let pos = warship.cannon_pos;
                     commands.spawn((

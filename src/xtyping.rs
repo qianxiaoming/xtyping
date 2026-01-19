@@ -31,6 +31,9 @@ fn main() {
                 ..default()
             }),
             ..default()
+        }).set(AssetPlugin {
+            file_path: resolve_assets_path(),
+            ..default()
         }))
         .init_state::<GameState>()
         .add_sub_state::<PlayState>()
@@ -396,4 +399,26 @@ fn save_game_users(players: &Players) {
             error!("Failed to save player data: {}", e);
         }
     }
+}
+
+fn resolve_assets_path() -> String {
+    let dev_path = PathBuf::from("assets");
+    if dev_path.exists() {
+        return dev_path.display().to_string();
+    }
+
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            // exe/.../MacOS/
+            let candidate = parent
+                .parent() // Contents
+                .map(|c| c.join("Resources").join("assets"))
+                .unwrap();
+            if candidate.exists() {
+                return candidate.display().to_string();
+            }
+        }
+    }
+
+    panic!("找不到 assets 目录！");
 }
